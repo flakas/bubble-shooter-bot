@@ -13,7 +13,7 @@ GAME_BOARD_X = 35
 GAME_BOARD_Y = 15
 GAME_BOARD_DEPTH = 4
 
-graph = tf.get_default_graph()
+#tf.disable_eager_execution()
 
 '''
  ' Huber loss.
@@ -38,7 +38,9 @@ def huber_loss_mean(y_true, y_pred, clip_delta=1.0):
 class Agent:
     def __init__(self, state_size, action_size, move_size, memory, epsilon=1.0, gamma=0.9, learning_rate=0.00025, update_target_frequency=10, replay_frequency=4, batch_size=32, name=None):
         self.graph = tf.get_default_graph()
-        self.sess = tf.Session()
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth = True
+        self.sess = tf.Session(config=config)
         tf.keras.backend.set_session(self.sess)
 
         self.state_size = state_size
@@ -92,6 +94,8 @@ class Agent:
                 return self.model
 
     def save_model(self, path=None):
+        # TODO: disabling temporarily while setting up multiprocessing agents
+        #return False
         if not path:
             assert(self.filename != None)
             path = self.filename

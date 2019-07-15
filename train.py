@@ -264,7 +264,7 @@ class TrainerActor(pykka.ThreadingActor):
 # agent = Agent(state_size=128*128*3, action_size=560, move_size=28, memory=Memory(5000), epsilon=0.9, name='doubledqn_pooled_convo_0.00025lr_smallrewards')
 # train2(agent, episodes=400, steps=500)
 
-TOTAL_TRAINERS = 24
+TOTAL_TRAINERS = 15
 configurations = [
         { 'epsilon': 0.99, 'gamma': 0.9, 'learning_rate': 0.00025, 'replay_frequency': 4, 'target_update_frequency': 1000, 'memory_epsilon': 0.01, 'memory_alpha': 0.6, 'memory_size': 20000, 'batch_size': 32, 'episodes': TOTAL_TRAINERS*400, 'steps': 500, },
 ]
