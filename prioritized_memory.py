@@ -97,19 +97,24 @@ class Memory:   # stored as ( s, a, r, s_ ) in SumTree
     def has_enough_samples(self, num_samples):
         return self.tree.count() >= num_samples
 
-    def persist_to_file(self, filename):
+    def persist_to_file(self):
         print('[MEMORY] Memory persisting disabled')
         return
-        with open(filename, 'wb') as f:
-            pickle.dump(self.tree, f, pickle.HIGHEST_PROTOCOL)
-            print(f'Saved {self.tree.count()} snapshots')
+        #print('[MEMORY] Persisting data')
+        #numpy.savez('memory/memory.npz', tree=self.tree.tree, data=self.tree.data, allow_pickle=True)
+        #numpy.save(f'memory/tree.npy', self.tree.tree, allow_pickle=True)
+        #numpy.save(f'memory/data.npy', self.tree.data, allow_pickle=True)
 
-    def load_from_file(self, filename):
+    def load_from_file(self):
         print('[MEMORY] Memory persisting disabled')
         return
-        if not os.path.isfile(filename):
-            return False
-
-        with open(filename, 'rb') as f:
-            self.tree = pickle.load(f)
-            print(f'Loaded {self.tree.count()} snapshots')
+        #memory_filename = 'memory/memory.npz'
+        #tree_filename = 'memory/tree.npy'
+        #data_filename = f'memory/data.npy'
+        #if os.path.isfile(memory_filename):
+            #print('[MEMORY] Loading data from file')
+            #npzfile = numpy.load(memory_filename, allow_pickle=True)
+            #self.tree.tree = npzfile['tree']
+            #self.tree.data = npzfile['data']
+            #self.tree.tree = numpy.load(tree_filename, allow_pickle=True)
+            #self.tree.data = numpy.load(data_filename, allow_pickle=True)

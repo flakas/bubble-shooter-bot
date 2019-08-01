@@ -20,7 +20,7 @@ GAME_BOARD_DIMENSION = 64
 COLOR_SPACE = 3
 GAME_BOARD_X = 35
 GAME_BOARD_Y = 15
-GAME_BOARD_DEPTH = 4
+GAME_BOARD_DEPTH = 8
 
 os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
@@ -32,19 +32,22 @@ class AgentProcess:
         self.my_queue = my_queue
         self.worker_queues = worker_queues
         os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+        self.memory = Memory(config['memory_size'], epsilon=config['memory_epsilon'], alpha=config['memory_alpha'])
+        self.memory.load_from_file()
         self.agent = Agent(
                 #state_size=GAME_BOARD_DIMENSION*GAME_BOARD_DIMENSION*COLOR_SPACE,
                 state_size=GAME_BOARD_X*GAME_BOARD_Y*GAME_BOARD_DEPTH,
                 action_size=560,
                 move_size=35,
-                memory=Memory(config['memory_size'], epsilon=config['memory_epsilon'], alpha=config['memory_alpha']),
+                memory=self.memory,
                 epsilon=config['epsilon'],
                 gamma=config['gamma'],
                 learning_rate=config['learning_rate'],
                 batch_size=config['batch_size'],
                 update_target_frequency=config['target_update_frequency'],
                 replay_frequency=config['replay_frequency'],
-                name=f"dueling1_mse_vsinit_{config['epsilon']}eps_{config['gamma']}gamma_{config['learning_rate']}lr_{config['replay_frequency']}refr_{config['target_update_frequency']}upfr_{config['memory_alpha']}memal_{config['batch_size']}bs_normbinaryrewards_parsedstate_onlycurnext")
+                name=f"dueling2_mse_vsinit_{config['epsilon']}eps_{config['gamma']}gamma_{config['learning_rate']}lr_{config['replay_frequency']}refr_{config['target_update_frequency']}upfr_{config['memory_alpha']}memal_{config['batch_size']}bs_normbinrewards_parsedstate")
+        self.episodes_seen = 0
 
     def send_message(self, worker, message):
         self.worker_queues[worker].put_nowait(message)
@@ -88,6 +91,9 @@ class AgentProcess:
 
     def after_episode(self, episode):
         self.agent.after_episode(episode)
+        self.episodes_seen += 1
+        if self.episodes_seen % 50 == 0:
+            self.memory.persist_to_file()
 
 def agent_worker(config, my_queue, worker_queues):
     from agent import Agent
@@ -197,9 +203,9 @@ class TrainingSupervisorActor:
             worker.join()
         self.agent.terminate()
 
-TOTAL_TRAINERS = 16
+TOTAL_TRAINERS = 24
 configurations = [
-        { 'epsilon': 0.99, 'gamma': 0.9, 'learning_rate': 0.00025, 'replay_frequency': 25, 'target_update_frequency': 2500, 'memory_epsilon': 0.01, 'memory_alpha': 0.6, 'memory_size': 20000, 'batch_size': 32, 'episodes': 10, 'steps': 500, },
+        { 'epsilon': 0.99, 'gamma': 0.9, 'learning_rate': 0.00025, 'replay_frequency': 4, 'target_update_frequency': 4000, 'memory_epsilon': 0.01, 'memory_alpha': 0.6, 'memory_size': 50000, 'batch_size': 32, 'episodes': 500, 'steps': 500, },
 ]
 
 if __name__ == '__main__':

@@ -11,7 +11,7 @@ GAME_BOARD_DIMENSION = 64
 COLOR_SPACE = 3
 GAME_BOARD_X = 35
 GAME_BOARD_Y = 15
-GAME_BOARD_DEPTH = 4
+GAME_BOARD_DEPTH = 8
 
 #tf.disable_eager_execution()
 
@@ -36,7 +36,7 @@ def huber_loss_mean(y_true, y_pred, clip_delta=1.0):
     return tf.keras.backend.mean(huber_loss(y_true, y_pred, clip_delta))
 
 class Agent:
-    def __init__(self, state_size, action_size, move_size, memory, epsilon=1.0, gamma=0.9, learning_rate=0.00025, update_target_frequency=10, replay_frequency=4, batch_size=32, name=None):
+    def __init__(self, state_size, action_size, move_size, memory, epsilon=1.0, gamma=0.9, learning_rate=0.00025, update_target_frequency=10, replay_frequency=4, batch_size=32, preplay_steps=10000, name=None):
         self.graph = tf.get_default_graph()
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
@@ -50,13 +50,14 @@ class Agent:
         self.memory = memory
         self.gamma = gamma
         self.epsilon = epsilon
-        self.epsilon_min = 0.1
-        self.epsilon_decay = 0.995
+        self.epsilon_min = 0.05
+        self.epsilon_decay = 0.99 # 0.995
         self.learning_rate = learning_rate
         self.batch_size = batch_size
         self.name = name
         self.update_target_frequency = update_target_frequency
         self.replay_frequency = replay_frequency
+        self.preplay_steps = preplay_steps
         self.steps = 0
         self.episode = 0
 
@@ -200,7 +201,7 @@ class Agent:
         model = tf.keras.models.Model(inputs=[input_layer], outputs=[policy])
 
         model.compile(
-            # loss=huber_loss,
+            #loss=huber_loss_mean,
             loss='mse',
             optimizer=tf.keras.optimizers.Adam(self.learning_rate),
             # optimizer=tf.keras.optimizers.RMSprop(self.learning_rate),
@@ -233,6 +234,10 @@ class Agent:
     def remember(self, state, action, reward, next_state, done):
         # self.memory.add(error, (state, action, reward, next_state, done))
         index = 0 # because it is generated in memory.sample()
+        if done:
+            # When the game is done, all matching pieces are set to zero (not matching).
+            # Useful only in model-based learning
+            next_state = np.zeros(np.shape(state))
         experience = (state, action, reward, next_state, done)
         (states, targets, errors) = self.get_targets([(index, experience)])
         self.memory.add(errors[0], experience)
@@ -273,7 +278,7 @@ class Agent:
         if self.steps % self.update_target_frequency == 0:
             self.refresh_target_model()
 
-        if self.steps % self.replay_frequency == 0:
+        if self.steps % self.replay_frequency == 0 and self.steps >= self.preplay_steps:
             self.replay(self.batch_size)
 
     def after_episode(self, episode):

@@ -6,7 +6,7 @@ GAME_BOARD_DIMENSION = 64
 COLOR_SPACE = 3
 GAME_BOARD_X = 35
 GAME_BOARD_Y = 15
-GAME_BOARD_DEPTH = 4
+GAME_BOARD_DEPTH = 8
 
 class Game:
     def __init__(self, vision, controller):
@@ -57,7 +57,8 @@ class Game:
         #print(non_matching_balls.shape)
 
         #state = np.dstack((matching_balls, non_matching_balls, state))
-        state = np.dstack((current_matching_balls, current_non_matching_balls, next_matching_balls, next_non_matching_balls))
+        #state = np.dstack((current_matching_balls, current_non_matching_balls, next_matching_balls, next_non_matching_balls))
+        state = np.dstack((current_matching_balls, next_matching_balls, known_balls))
         #print(state.shape)
         # print(state)
         #print(state[:, :, 0])
@@ -172,7 +173,7 @@ class Game:
                     return
 
     def wait_for_game_to_catch_up(self):
-        number_of_frames_to_wait = 30
+        number_of_frames_to_wait = 15
         frames_per_second = 30
         assert number_of_frames_to_wait > 1
         assert frames_per_second > 1
