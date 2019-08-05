@@ -6,7 +6,7 @@ GAME_BOARD_DIMENSION = 64
 COLOR_SPACE = 3
 GAME_BOARD_X = 35
 GAME_BOARD_Y = 15
-GAME_BOARD_DEPTH = 8
+GAME_BOARD_DEPTH = 4
 
 class Game:
     def __init__(self, vision, controller):
@@ -32,9 +32,15 @@ class Game:
         self.vision.refresh()
 
     def get_state(self):
+        board = self.get_vision_state()
+        return self.preprocess_state(board)
+
+    def get_vision_state(self):
+        return self.vision.parse_game_board()
+
+    def preprocess_state(self, board):
         # one hot
         max_state_number = 7
-        board = self.vision.parse_game_board()
         #pieces = board.board.reshape(GAME_BOARD_Y, GAME_BOARD_X, 1)
         #print(board.board.shape, board.board.dtype)
         state = np.eye(max_state_number)[board.board]
@@ -57,8 +63,8 @@ class Game:
         #print(non_matching_balls.shape)
 
         #state = np.dstack((matching_balls, non_matching_balls, state))
-        #state = np.dstack((current_matching_balls, current_non_matching_balls, next_matching_balls, next_non_matching_balls))
-        state = np.dstack((current_matching_balls, next_matching_balls, known_balls))
+        state = np.dstack((current_matching_balls, current_non_matching_balls, next_matching_balls, next_non_matching_balls))
+        #state = np.dstack((current_matching_balls, next_matching_balls, known_balls))
         #print(state.shape)
         # print(state)
         #print(state[:, :, 0])
@@ -74,8 +80,6 @@ class Game:
         extra_info[0, 0, 0] = board.current_ball
 
         state = np.dstack((extra_info, pieces))
-        #print(state.shape)
-        #print(state[0, 0, :])
 
         max_state_number = 6
         normalized_state = state / max_state_number
@@ -94,9 +98,6 @@ class Game:
         else:
             raise Exception("Unknown COLOR_SPACE", COLOR_SPACE)
 
-        # cv2.imshow('Screenshot', img)
-        # cv2.waitKey(0)
-
         img = np.array(img)
         img = np.reshape(img, (GAME_BOARD_DIMENSION, GAME_BOARD_DIMENSION, COLOR_SPACE,))
         normalized_img = img / 255.0
@@ -114,21 +115,12 @@ class Game:
 
         initial_score = self.vision.get_bubble_count()
 
-        # absolute_x = board.x + target_x
-        # absolute_y = board.y + target_y
-
-        # self.controller.move_mouse(absolute_x, absolute_y)
-        # # self.wait_for_game_to_catch_up()
-        # self.controller.left_mouse_click()
         self.controller.move_to(target_x, target_y)
         after_initial_score = time.time()
         self.wait_for_animations_to_stop()
-        # time.sleep(0.5)
         after_mouse_click = time.time()
 
-        # self.review_game_board()
         new_score = self.vision.get_bubble_count()
-        # cv2.imshow('new', board.screen)
         after_new_score = time.time()
 
         if new_score > initial_score:
@@ -138,7 +130,6 @@ class Game:
             self.steps_without_reduction_in_bubbles = 0
             self.steps_reducing_bubbles += 1
 
-        # print(f'Timings: first_board {after_first_board-start}, initial_score {after_initial_score-start}, mouse click {after_mouse_click-start}, new_score {after_new_score-start}')
         bad_gameplay_offset = self.steps_without_reduction_in_bubbles * self.rewards['for_each_unsuccessful_step_in_a_row']
         good_gameplay_offset = self.steps_reducing_bubbles * self.rewards['for_each_successful_step_in_a_row']
 
@@ -173,11 +164,10 @@ class Game:
                     return
 
     def wait_for_game_to_catch_up(self):
-        number_of_frames_to_wait = 15
+        number_of_frames_to_wait = 20
         frames_per_second = 30
         assert number_of_frames_to_wait > 1
         assert frames_per_second > 1
-        # time.sleep(number_of_frames_to_wait/frames_per_second)
         time.sleep(number_of_frames_to_wait/frames_per_second)
 
     def is_finished(self):
@@ -196,11 +186,6 @@ class Game:
             print('The game is over, attempting to click OK')
             button = self.vision.get_ok_button_location()
             self.controller.move_to(button.x + offset, button.y + offset)
-            # absolute_x = board.x + button.x + offset
-            # absolute_y = board.y + button.y + offset
-            # self.controller.move_mouse(absolute_x, absolute_y)
-            # self.wait_for_game_to_catch_up()
-            # self.controller.left_mouse_click()
             self.wait_for_animations_to_stop()
 
         self.wait_for_animations_to_stop()
@@ -210,9 +195,4 @@ class Game:
             print('Attempting to cancel "Enter your name"')
             button = self.vision.get_cancel_button_location()
             self.controller.move_to(button.x + offset, button.y + offset)
-            # absolute_x = board.x + button.x + offset
-            # absolute_y = board.y + button.y + offset
-            # self.controller.move_mouse(absolute_x, absolute_y)
-            # self.wait_for_game_to_catch_up()
-            # self.controller.left_mouse_click()
             self.wait_for_animations_to_stop()

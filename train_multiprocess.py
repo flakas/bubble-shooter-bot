@@ -1,18 +1,13 @@
-from controller import Controller
-from vision import ScreenshotSource, SeleniumSource, Vision
+from vision import SeleniumSource, Vision
 from game import Game
-# from memory import Memory
 from prioritized_memory import Memory
-import cv2
 import numpy as np
 from selenium_browser import SeleniumBrowser
-# import asyncio
 import logging
-import time
 import queue
 import multiprocessing
 from multiprocessing import Process, Queue
-import os
+from pretrainer import Pretrainer
 
 #logging.basicConfig(level=logging.DEBUG)
 
@@ -20,9 +15,7 @@ GAME_BOARD_DIMENSION = 64
 COLOR_SPACE = 3
 GAME_BOARD_X = 35
 GAME_BOARD_Y = 15
-GAME_BOARD_DEPTH = 8
-
-os.environ['CUDA_VISIBLE_DEVICES'] = ''
+GAME_BOARD_DEPTH = 4
 
 class AgentProcess:
     def __init__(self, config, my_queue, worker_queues):
@@ -31,11 +24,10 @@ class AgentProcess:
         self.config = config
         self.my_queue = my_queue
         self.worker_queues = worker_queues
-        os.environ['CUDA_VISIBLE_DEVICES'] = '0'
         self.memory = Memory(config['memory_size'], epsilon=config['memory_epsilon'], alpha=config['memory_alpha'])
         self.memory.load_from_file()
+        self.pretrainer = Pretrainer('observed_episodes.pickle')
         self.agent = Agent(
-                #state_size=GAME_BOARD_DIMENSION*GAME_BOARD_DIMENSION*COLOR_SPACE,
                 state_size=GAME_BOARD_X*GAME_BOARD_Y*GAME_BOARD_DEPTH,
                 action_size=560,
                 move_size=35,
@@ -46,7 +38,9 @@ class AgentProcess:
                 batch_size=config['batch_size'],
                 update_target_frequency=config['target_update_frequency'],
                 replay_frequency=config['replay_frequency'],
-                name=f"dueling2_mse_vsinit_{config['epsilon']}eps_{config['gamma']}gamma_{config['learning_rate']}lr_{config['replay_frequency']}refr_{config['target_update_frequency']}upfr_{config['memory_alpha']}memal_{config['batch_size']}bs_normbinrewards_parsedstate")
+                name=f"dueling1_mse_vsinit_{config['epsilon']}eps_{config['gamma']}gamma_{config['learning_rate']}lr_{config['replay_frequency']}refr_{config['target_update_frequency']}upfr_{config['memory_alpha']}memal_{config['batch_size']}bs_normbinaryrewards_parsedstate_onlycurnext",
+                pretrainer=self.pretrainer)
+        self.agent.pretrain()
         self.episodes_seen = 0
 
     def send_message(self, worker, message):
@@ -115,8 +109,7 @@ class TrainerActor:
         return self.my_queue.get(block=True)
 
     def start(self):
-        # print('Got a request to start the trainer')
-        self.selenium = SeleniumBrowser(headless=False)
+        self.selenium = SeleniumBrowser()
         self.selenium_source = SeleniumSource(self.selenium)
         self.vision = Vision(self.selenium_source, templates_path='templates/')
         self.controller = self.selenium
@@ -128,7 +121,6 @@ class TrainerActor:
         self.selenium.cleanup()
 
     def train(self, episodes, steps, minibatch_size, replay_frequency=1):
-        # print('Got a request to train in trainer')
         episode_rewards = []
         for e in range(episodes):
             state = self.game.get_state()
@@ -140,7 +132,6 @@ class TrainerActor:
                 steps_taken += 1
                 self.send_to_agent({'command': 'act', 'state': state})
                 action = self.get_from_agent()
-                #action = agent.act(state).get()
                 actions_taken.append(action)
 
                 reward = self.game.perform_move(action, 400)
@@ -150,8 +141,6 @@ class TrainerActor:
 
                 self.send_to_agent({'command': 'remember', 'state': state, 'action': action, 'reward': reward, 'next_state': next_state, 'done': done})
                 self.send_to_agent({'command': 'after_step', 'step': time_t})
-                #agent.remember(state, action, reward, next_state, done).get()
-                #agent.after_step(time_t)
                 print(f'[AGENT] Episode: {e}/{episodes}, step: {time_t}/{steps}, action: {action}, reward: {reward}/{total_reward}, done: {done}')
 
                 state = next_state
@@ -163,7 +152,6 @@ class TrainerActor:
 
 
             self.send_to_agent({'command': 'after_episode', 'episode': e})
-            #agent.after_episode(e)
 
             episode_rewards.append(total_reward)
             episode_action_variance = np.var(actions_taken)
@@ -198,14 +186,13 @@ class TrainingSupervisorActor:
             worker.start()
 
     def wait_to_finish(self):
-        #agent_worker(config, self.agent_queue, self.worker_queues)
         for worker in self.workers:
             worker.join()
         self.agent.terminate()
 
 TOTAL_TRAINERS = 24
 configurations = [
-        { 'epsilon': 0.99, 'gamma': 0.9, 'learning_rate': 0.00025, 'replay_frequency': 4, 'target_update_frequency': 4000, 'memory_epsilon': 0.01, 'memory_alpha': 0.6, 'memory_size': 50000, 'batch_size': 32, 'episodes': 500, 'steps': 500, },
+        { 'epsilon': 0.99, 'gamma': 0.9, 'learning_rate': 0.00025, 'replay_frequency': 4, 'target_update_frequency': 1000, 'memory_epsilon': 0.01, 'memory_alpha': 0.6, 'memory_size': 20000, 'batch_size': 32, 'episodes': 500, 'steps': 500, },
 ]
 
 if __name__ == '__main__':

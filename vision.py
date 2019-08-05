@@ -41,7 +41,6 @@ class SeleniumSource(ScreenshotSource):
         self.board = None
 
     def refresh(self):
-        # print('[SELENIUM SOURCE] Refreshing the game board')
         board = self.selenium_source.get_game_board()
         self.board = board
         self.image = board.screen
@@ -115,7 +114,6 @@ class Vision:
         _, contours, _ = cv2.findContours(dilated, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
 
-        # contour_image_target = screen_image.copy()
         for contour in contours:
             # get rectangle bounding contour
             [x, y, w, h] = cv2.boundingRect(contour)
@@ -141,16 +139,12 @@ class Vision:
         cells_vertically = 15
         (cell_width, cell_height) = (pieces_area_width//cells_horizontally, pieces_area_height//cells_vertically)
         (cell_center_offset_x, cell_center_offset_y) = (cell_width//2, cell_height//2)
-        #print(cell_center_offset_x, cell_center_offset_y, pieces_area[cell_center_offset_y, cell_center_offset_x])
-        # cv2.imshow('board', pieces_area)
-        # cv2.waitKey(0)
+
         centers = np.zeros((cells_vertically, cells_horizontally), dtype=np.int8)
         for x in range(cells_horizontally):
             for y in range(cells_vertically):
                 absolute_x, absolute_y = (x * cell_width + cell_center_offset_x, y * cell_height + cell_center_offset_y)
                 centers[y, x] = self.predict_color(pieces_area[absolute_y, absolute_x])
-
-        #print(centers)
 
         (current_ball_offset_x, current_ball_offset_y) = (272, 528)
         (current_ball_absolute_x, current_ball_absolute_y) = (current_ball_offset_x + cell_center_offset_x, current_ball_offset_y + cell_center_offset_y)
@@ -159,9 +153,6 @@ class Vision:
         (next_ball_offset_x, next_ball_offset_y) = (16, 528)
         (next_ball_absolute_x, next_ball_absolute_y) = (next_ball_offset_x + cell_center_offset_x, next_ball_offset_y + cell_center_offset_y)
         next_ball = self.predict_color(board.screen[next_ball_absolute_y, next_ball_absolute_x])
-        #print('Next ball', next_ball)
-        #cv2.imshow('board', board.screen[next_ball_offset_y:next_ball_offset_y+cell_height, next_ball_offset_x:next_ball_offset_x+cell_width])
-        #cv2.waitKey(0)
 
         ParsedBoard = namedtuple('ParsedBoard', ['current_ball', 'next_ball', 'board'])
 
@@ -237,20 +228,14 @@ class Vision:
     def get_bubble_count(self):
         board = self.get_game_board()
 
-        # grayscale = cv2.cvtColor(board.screen, cv2.COLOR_BGR2GRAY)
-
         hsv = cv2.cvtColor(board.screen, cv2.COLOR_BGR2HSV)
         lower_background = np.array([0, 150, 100])
         upper_background = np.array([255, 255, 255])
         background_mask = cv2.inRange(hsv, lower_background, upper_background)
         thresh = cv2.bitwise_and(board.screen, board.screen, mask=background_mask)
-        # ret, thresh = cv2.threshold(grayscale, 170, 255, 0)
-        # thresh = cv2.Canny(grayscale, 5, 50)
-        # thresh = cv2.Laplacian(grayscale, cv2.CV_64F)
+
         grayscale = cv2.cvtColor(thresh, cv2.COLOR_BGR2GRAY)
         ret, thresh = cv2.threshold(grayscale, 10, 255, 0)
-        # cv2.imshow('canny', thresh)
-        # cv2.waitKey(0)
 
         _, contours, _ = cv2.findContours(thresh, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -260,13 +245,6 @@ class Vision:
             return 25 < w < 40 and 25 < h < 40 and x < 600 and y < 500
 
         contours = list(filter(isBigEnough, contours))
-
-
-        # output = board.screen.copy()
-        # cv2.drawContours(output, contours, -1, (0, 0, 255), 2)
-
-        # cv2.imshow('contours', output)
-        # cv2.waitKey(0)
 
         return max(len(contours) - 2, 0)
 

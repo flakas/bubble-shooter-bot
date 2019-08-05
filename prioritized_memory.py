@@ -100,21 +100,7 @@ class Memory:   # stored as ( s, a, r, s_ ) in SumTree
     def persist_to_file(self):
         print('[MEMORY] Memory persisting disabled')
         return
-        #print('[MEMORY] Persisting data')
-        #numpy.savez('memory/memory.npz', tree=self.tree.tree, data=self.tree.data, allow_pickle=True)
-        #numpy.save(f'memory/tree.npy', self.tree.tree, allow_pickle=True)
-        #numpy.save(f'memory/data.npy', self.tree.data, allow_pickle=True)
 
     def load_from_file(self):
         print('[MEMORY] Memory persisting disabled')
         return
-        #memory_filename = 'memory/memory.npz'
-        #tree_filename = 'memory/tree.npy'
-        #data_filename = f'memory/data.npy'
-        #if os.path.isfile(memory_filename):
-            #print('[MEMORY] Loading data from file')
-            #npzfile = numpy.load(memory_filename, allow_pickle=True)
-            #self.tree.tree = npzfile['tree']
-            #self.tree.data = npzfile['data']
-            #self.tree.tree = numpy.load(tree_filename, allow_pickle=True)
-            #self.tree.data = numpy.load(data_filename, allow_pickle=True)

@@ -11,9 +11,7 @@ GAME_BOARD_DIMENSION = 64
 COLOR_SPACE = 3
 GAME_BOARD_X = 35
 GAME_BOARD_Y = 15
-GAME_BOARD_DEPTH = 8
-
-#tf.disable_eager_execution()
+GAME_BOARD_DEPTH = 4
 
 '''
  ' Huber loss.
@@ -36,10 +34,11 @@ def huber_loss_mean(y_true, y_pred, clip_delta=1.0):
     return tf.keras.backend.mean(huber_loss(y_true, y_pred, clip_delta))
 
 class Agent:
-    def __init__(self, state_size, action_size, move_size, memory, epsilon=1.0, gamma=0.9, learning_rate=0.00025, update_target_frequency=10, replay_frequency=4, batch_size=32, preplay_steps=10000, name=None):
+    def __init__(self, state_size, action_size, move_size, memory, epsilon=1.0, gamma=0.9, learning_rate=0.00025, update_target_frequency=10, replay_frequency=4, batch_size=32, preplay_steps=500, name=None, pretrainer=None):
         self.graph = tf.get_default_graph()
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
+        #config.log_device_placement = True
         self.sess = tf.Session(config=config)
         tf.keras.backend.set_session(self.sess)
 
@@ -50,8 +49,8 @@ class Agent:
         self.memory = memory
         self.gamma = gamma
         self.epsilon = epsilon
-        self.epsilon_min = 0.05
-        self.epsilon_decay = 0.99 # 0.995
+        self.epsilon_min = 0.01
+        self.epsilon_decay = 0.90 # 0.995
         self.learning_rate = learning_rate
         self.batch_size = batch_size
         self.name = name
@@ -60,6 +59,8 @@ class Agent:
         self.preplay_steps = preplay_steps
         self.steps = 0
         self.episode = 0
+        self.pretrainer = pretrainer
+        self.is_pretraining = False
 
         with self.sess.as_default():
             with self.graph.as_default():
@@ -67,14 +68,14 @@ class Agent:
                     self.filename = f'models/{name}.h5'
 
                 self.model = self._build_model()
+
                 if self.filename and os.path.exists(self.filename):
                     self.model = self.load_model(self.filename)
                 else:
-                    # self.model = self._build_model()
                     pass
 
-
-                print(self.model.summary())
+                print('Agent model', self.model.summary())
+                tf.keras.utils.plot_model(self.model, to_file='model.png', show_shapes=True)
 
                 self.target_model = self._build_model()
 
@@ -85,12 +86,21 @@ class Agent:
 
                 self.callbacks = self.get_callbacks()
 
+    def start_pretraining(self):
+        self.is_pretraining = True
+
+    def stop_pretraining(self):
+        self.is_pretraining = False
+
+    def pretrain(self):
+        if self.pretrainer:
+            self.pretrainer.pretrain(self)
+
     def load_model(self, path):
         print('Loading model', path)
         with self.sess.as_default():
             with self.graph.as_default():
                 self.model.load_weights(path)
-                #self.model = tf.keras.models.load_model(path)
                 self.model._make_predict_function()
                 return self.model
 
@@ -103,7 +113,6 @@ class Agent:
         with self.sess.as_default():
             with self.graph.as_default():
                 self.model.save_weights(path)
-                #self.model.save(path)
 
     def _build_simple_dense_model(self):
         model = tf.keras.models.Sequential()
@@ -182,29 +191,29 @@ class Agent:
 
     def _build_dueling_model(self):
         model = tf.keras.models.Sequential()
-        # input_layer = tf.keras.layers.Input(shape=(GAME_BOARD_DIMENSION, GAME_BOARD_DIMENSION, COLOR_SPACE))
+
         input_layer = tf.keras.layers.Input(shape=(GAME_BOARD_Y, GAME_BOARD_X, GAME_BOARD_DEPTH))
         conv1 = tf.keras.layers.Conv2D(32, (5, 5), strides=(2, 2), activation='relu', kernel_initializer=tf.keras.initializers.VarianceScaling(scale=2))(input_layer)
         conv2 = tf.keras.layers.Conv2D(64, (3, 3), strides=(2, 2), activation='relu', kernel_initializer=tf.keras.initializers.VarianceScaling(scale=2))(conv1)
         conv3 = tf.keras.layers.Conv2D(64, (2, 2), activation='relu', kernel_initializer=tf.keras.initializers.VarianceScaling(scale=2))(conv2)
         flatten = tf.keras.layers.Flatten()(conv3)
+
         fc1 = tf.keras.layers.Dense(256, kernel_initializer=tf.keras.initializers.VarianceScaling(scale=2))(flatten)
+
         advantage = tf.keras.layers.Dense(self.move_size, kernel_initializer=tf.keras.initializers.VarianceScaling(scale=2))(fc1)
         fc2 = tf.keras.layers.Dense(256, kernel_initializer=tf.keras.initializers.VarianceScaling(scale=2))(flatten)
+
         value = tf.keras.layers.Dense(1, kernel_initializer=tf.keras.initializers.VarianceScaling(scale=2))(fc2)
 
-        # policy = tf.keras.layers.merge([advantage, value], mode=lambda x: x[0]-tf.keras.backend.mean(x[0])+x[1], output_shape=(self.move_size,))
         advantage = tf.keras.layers.Lambda(lambda advantage: advantage - tf.reduce_mean(advantage, axis=-1, keep_dims=True))(advantage)
         value = tf.keras.layers.Lambda(lambda value: tf.tile(value, [1, self.move_size]))(value)
         policy = tf.keras.layers.Add()([value, advantage])
 
-        model = tf.keras.models.Model(inputs=[input_layer], outputs=[policy])
+        model = tf.keras.models.Model(inputs=[input_layer], outputs=[policy], name='agent_model')
 
         model.compile(
-            #loss=huber_loss_mean,
             loss='mse',
             optimizer=tf.keras.optimizers.Adam(self.learning_rate),
-            # optimizer=tf.keras.optimizers.RMSprop(self.learning_rate),
             metrics=['accuracy'])
 
         return model
@@ -232,7 +241,6 @@ class Agent:
                     return self.model.predict(state)
 
     def remember(self, state, action, reward, next_state, done):
-        # self.memory.add(error, (state, action, reward, next_state, done))
         index = 0 # because it is generated in memory.sample()
         if done:
             # When the game is done, all matching pieces are set to zero (not matching).
@@ -242,6 +250,9 @@ class Agent:
         (states, targets, errors) = self.get_targets([(index, experience)])
         self.memory.add(errors[0], experience)
 
+        if self.pretrainer and not self.is_pretraining:
+            self.pretrainer.store_experience(experience)
+
     def act(self, state):
         if np.random.rand() <= self.epsilon or not self.memory.has_enough_samples(32):
             action = random.randrange(self.move_size)
@@ -249,7 +260,7 @@ class Agent:
             state = np.array(state).reshape((1, GAME_BOARD_Y, GAME_BOARD_X, GAME_BOARD_DEPTH))
             act_values = self.predict(state)
             top_actions = act_values[0].argsort()[-5:][::-1]
-            # action = np.argmax(act_values[0])
+
             action = top_actions[0]
             top_q_values = list((a, act_values[0][a]) for a in top_actions)
             q_value = np.max(act_values[0])
@@ -257,10 +268,27 @@ class Agent:
 
         return self.coordinate_mapper.agent_to_game(action)
 
-    def replay(self, batch_size):
-        minibatch = self.memory.sample(batch_size)
+    def act_with_stats(self, state):
+        """ Chooses the recommended action and returns evaluations for all other actions """
 
-        (states, targets, errors) = self.get_targets(minibatch, batch_size=batch_size)
+        state = np.array(state).reshape((1, GAME_BOARD_Y, GAME_BOARD_X, GAME_BOARD_DEPTH))
+        act_values = self.predict(state)
+        top_actions = act_values[0].argsort()[-5:][::-1]
+
+        action = top_actions[0]
+        top_q_values = list((a, act_values[0][a]) for a in top_actions)
+        q_value = np.max(act_values[0])
+        print(f'NN moving to {action} (Q: {q_value}) (Top Q: {top_q_values})')
+
+        evaluations = [(self.coordinate_mapper.agent_to_game(i), q_value) for (i, q_value) in enumerate(act_values[0])]
+
+        return {
+            'recommended_action': self.coordinate_mapper.agent_to_game(action),
+            'action_evaluations': list(evaluations)
+        }
+
+    def replay(self, minibatch):
+        (states, targets, errors) = self.get_targets(minibatch, batch_size=len(minibatch))
 
         for (i, (index, data)) in enumerate(minibatch):
             self.memory.update(index, errors[i])
@@ -269,7 +297,7 @@ class Agent:
         with self.sess.as_default():
             with self.graph.as_default():
                 self.save_model()
-                self.model.fit(states, targets, batch_size=batch_size, epochs=1, callbacks=self.callbacks, verbose=1)
+                self.model.fit(states, targets, batch_size=len(minibatch), epochs=1, callbacks=self.callbacks, verbose=1)
 
     def after_step(self, step):
         self.steps += 1
@@ -279,11 +307,11 @@ class Agent:
             self.refresh_target_model()
 
         if self.steps % self.replay_frequency == 0 and self.steps >= self.preplay_steps:
-            self.replay(self.batch_size)
+            minibatch = self.memory.sample(self.batch_size)
+            self.replay(minibatch)
 
     def after_episode(self, episode):
         self.episode += 1
-        # self.callbacks[1].step = self.episode
 
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
@@ -313,8 +341,6 @@ class Agent:
             else:
                 online_target_action = np.argmax(predictions_ending_online[i])
                 q_values[agent_action] = reward + self.gamma * predictions_ending_target[i][online_target_action]
-                # future_q = np.max(predictions_ending_target[i])
-                # q_values[agent_action] = reward + self.gamma * future_q
 
             states.append(state)
             targets.append(q_values)
@@ -323,9 +349,6 @@ class Agent:
         states = np.array(states)
         targets = np.array(targets)
         errors = np.array(errors)
-        # states = np.reshape(states, (batch_size, -1))
-        # targets = np.reshape(targets, (batch_size, -1))
-        # errors = np.reshape(errors, (batch_size, -1))
 
         return (states, targets, errors)
 
@@ -333,7 +356,6 @@ class Agent:
         return [
             tf.keras.callbacks.ModelCheckpoint(f'./checkpoints/{self.name}-{int(time.time())}/', save_weights_only=True),
             ModifiedTensorBoard(log_dir='logs/{}-{}'.format(self.name, int(time.time())))
-            # tf.keras.callbacks.TensorBoard()
         ]
 
     def remember_episode_rewards(self, total_reward, min_reward, avg_reward, max_reward, episode_action_variance, steps_played):
