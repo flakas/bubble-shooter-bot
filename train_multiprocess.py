@@ -26,7 +26,7 @@ class AgentProcess:
         self.worker_queues = worker_queues
         self.memory = Memory(config['memory_size'], epsilon=config['memory_epsilon'], alpha=config['memory_alpha'])
         self.memory.load_from_file()
-        self.pretrainer = Pretrainer('observed_episodes.pickle')
+        self.pretrainer = None # Pretrainer('observed_episodes.pickle')
         self.agent = Agent(
                 state_size=GAME_BOARD_X*GAME_BOARD_Y*GAME_BOARD_DEPTH,
                 action_size=560,
