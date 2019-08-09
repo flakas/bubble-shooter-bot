@@ -1,4 +1,3 @@
-from controller import Controller
 from vision import ScreenshotSource, Vision, SeleniumSource
 from selenium_browser import SeleniumBrowser
 from game import Game
@@ -9,7 +8,6 @@ import numpy as np
 import time
 
 # vision = Vision(ScreenshotSource(), templates_path='templates/')
-controller = Controller()
 selenium_browser = SeleniumBrowser()
 vision = Vision(SeleniumSource(selenium_browser), templates_path='templates/')
 # game = Game(vision, controller)

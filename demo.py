@@ -1,5 +1,4 @@
 # dueling1_mse_vsinit_0.99eps_0.9gamma_0.00025lr_4refr_1000upfr_0.6memal_32bs_normbinaryrewards_parsedstate_onlycurnext-1563745230
-from controller import Controller
 from vision import ScreenshotSource, SeleniumSource, Vision
 from game import Game
 # from memory import Memory
