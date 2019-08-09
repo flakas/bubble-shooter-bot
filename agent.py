@@ -34,7 +34,7 @@ def huber_loss_mean(y_true, y_pred, clip_delta=1.0):
     return tf.keras.backend.mean(huber_loss(y_true, y_pred, clip_delta))
 
 class Agent:
-    def __init__(self, state_size, action_size, move_size, memory, epsilon=1.0, gamma=0.9, learning_rate=0.00025, update_target_frequency=10, replay_frequency=4, batch_size=32, preplay_steps=500, name=None, pretrainer=None):
+    def __init__(self, state_size, action_size, move_size, memory, epsilon=1.0, gamma=0.9, learning_rate=0.00025, update_target_frequency=10, replay_frequency=4, batch_size=32, preplay_steps=500, name=None):
         self.graph = tf.get_default_graph()
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
@@ -59,8 +59,6 @@ class Agent:
         self.preplay_steps = preplay_steps
         self.steps = 0
         self.episode = 0
-        self.pretrainer = pretrainer
-        self.is_pretraining = False
 
         with self.sess.as_default():
             with self.graph.as_default():
@@ -85,16 +83,6 @@ class Agent:
                 self.refresh_target_model()
 
                 self.callbacks = self.get_callbacks()
-
-    def start_pretraining(self):
-        self.is_pretraining = True
-
-    def stop_pretraining(self):
-        self.is_pretraining = False
-
-    def pretrain(self):
-        if self.pretrainer:
-            self.pretrainer.pretrain(agent=self)
 
     def load_model(self, path):
         print('Loading model', path)
@@ -304,9 +292,6 @@ class Agent:
         experience = (state, action, reward, next_state, done)
         (states, targets, errors) = self.get_targets([(index, experience)])
         self.memory.add(errors[0], experience)
-
-        if self.pretrainer and not self.is_pretraining:
-            self.pretrainer.store_experience(experience)
 
     def act(self, state):
         if np.random.rand() <= self.epsilon or not self.memory.has_enough_samples(32):

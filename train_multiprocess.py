@@ -7,7 +7,6 @@ import logging
 import queue
 import multiprocessing
 from multiprocessing import Process, Queue
-from pretrainer import Pretrainer
 
 #logging.basicConfig(level=logging.DEBUG)
 
@@ -25,7 +24,6 @@ class AgentProcess:
         self.worker_queues = worker_queues
         self.memory = Memory(config['memory_size'], epsilon=config['memory_epsilon'], alpha=config['memory_alpha'])
         self.memory.load_from_file()
-        self.pretrainer = None #Pretrainer('observed_episodes.pickle')
         self.agent = Agent(
                 state_size=GAME_BOARD_X*GAME_BOARD_Y*GAME_BOARD_DEPTH,
                 action_size=560,
@@ -37,9 +35,7 @@ class AgentProcess:
                 batch_size=config['batch_size'],
                 update_target_frequency=config['target_update_frequency'],
                 replay_frequency=config['replay_frequency'],
-                name=f"dueling_inception16_mse_vsinit_{config['epsilon']}eps_{config['gamma']}gamma_{config['learning_rate']}lr_{config['replay_frequency']}refr_{config['target_update_frequency']}upfr_{config['memory_alpha']}memal_{config['batch_size']}bs_normbinaryrewards_parsedsmallstate_allcolors",
-                pretrainer=self.pretrainer)
-        self.agent.pretrain()
+                name=f"dueling_inception16_mse_vsinit_{config['epsilon']}eps_{config['gamma']}gamma_{config['learning_rate']}lr_{config['replay_frequency']}refr_{config['target_update_frequency']}upfr_{config['memory_alpha']}memal_{config['batch_size']}bs_normbinaryrewards_parsedsmallstate_allcolors")
         self.episodes_seen = 0
 
     def send_message(self, worker, message):
