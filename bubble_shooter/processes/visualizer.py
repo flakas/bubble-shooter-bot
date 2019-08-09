@@ -29,7 +29,7 @@ class PlayerActionVisualizerProcess:
             old_message = message
 
 def visualizer_worker(config, my_queue):
-    visualizer = PlayerActionVisualizerProcess(config['action_size'], config['move_size'], my_queue)
+    visualizer = PlayerActionVisualizerProcess(config['game_board_width'], config['agent_move_size'], my_queue)
     visualizer.start()
     visualizer.work()
 

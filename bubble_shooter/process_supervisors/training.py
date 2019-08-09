@@ -3,7 +3,7 @@ from multiprocessing import Process, Queue
 from bubble_shooter.processes.agent import agent_worker
 from bubble_shooter.processes.trainer import trainer_worker
 
-class TrainingSupervisorActor:
+class TrainingSupervisor:
     def __init__(self, config, total_trainers=2):
         multiprocessing.set_start_method('spawn', force=True)
 

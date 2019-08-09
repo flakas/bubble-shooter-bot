@@ -22,7 +22,7 @@ class AgentProcess:
         action_shape = move_size
 
         self.agent = Agent(
-                coordinate_mapper=CoordinateMapper(action_size=action_size, move_size),
+                coordinate_mapper=CoordinateMapper(action_size, move_size),
                 model_builder=config['model_builder'](state_shape, action_shape, config['learning_rate']),
                 state_shape=state_shape,
                 move_size=move_size,

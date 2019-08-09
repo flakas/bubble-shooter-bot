@@ -26,7 +26,7 @@ class DuelingInception:
         after_inception = inception_block(first_layer)
         after_inception = inception_block(after_inception)
 
-        conv = tf.keras.layers.Conv2D(64, (1, 1), activation='relu')(concat)
+        conv = tf.keras.layers.Conv2D(64, (1, 1), activation='relu')(after_inception)
         flatten = tf.keras.layers.Flatten()(conv)
 
         fc1 = tf.keras.layers.Dense(64, activation='relu')(flatten)

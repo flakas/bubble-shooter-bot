@@ -1,4 +1,4 @@
-from bubble_shooter.process_supervisors.train import TrainingSupervisor
+from bubble_shooter.process_supervisors.training import TrainingSupervisor
 from bubble_shooter.state_preprocessors.all_color import AllColor as AllColorPreprocessor
 from bubble_shooter.models.dueling_inception import DuelingInception
 
@@ -20,7 +20,7 @@ configurations = [
         'game_board_width': 560,
         'state_preprocessor': AllColorPreprocessor(),
         'model_builder': DuelingInception,
-    ,
+    },
 ]
 
 if __name__ == '__main__':

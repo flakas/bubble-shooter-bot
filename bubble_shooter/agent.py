@@ -19,8 +19,8 @@ class Agent:
         self.memory = memory
         self.gamma = gamma
         self.epsilon = epsilon
-        self.epsilon_min = 0.1
-        self.epsilon_decay = 0.99 # 0.995
+        self.epsilon_min = 0.01
+        self.epsilon_decay = 0.995
         self.batch_size = batch_size
         self.name = f'{model_builder.name}_{name}'
         self.update_target_frequency = update_target_frequency
