@@ -6,6 +6,7 @@ from selenium_browser import SeleniumBrowser
 import queue
 import multiprocessing
 from multiprocessing import Process, Queue
+from bubble_shooter.state_preprocessors.all_color import AllColor as AllColorPreprocessor
 
 COLOR_SPACE = 3
 GAME_BOARD_X = 17
@@ -105,7 +106,8 @@ class TrainerActor:
         self.selenium_source = SeleniumSource(self.selenium)
         self.vision = Vision(self.selenium_source, templates_path='templates/')
         self.controller = self.selenium
-        self.game = Game(self.vision, self.controller)
+        self.state_preprocessor = AllColorPreprocessor()
+        self.game = Game(self.vision, self.controller, self.state_preprocessor)
 
         self.selenium.setup()
 

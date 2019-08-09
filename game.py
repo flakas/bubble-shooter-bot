@@ -1,17 +1,11 @@
 import time
-import cv2
 import numpy as np
 
-GAME_BOARD_DIMENSION = 64
-COLOR_SPACE = 3
-GAME_BOARD_X = 17
-GAME_BOARD_Y = 15
-GAME_BOARD_DEPTH = 8
-
 class Game:
-    def __init__(self, vision, controller):
+    def __init__(self, vision, controller, state_preprocessor):
         self.vision = vision
         self.controller = controller
+        self.state_preprocessor = state_preprocessor
         self.min_reward = -1
         self.max_reward = 1
         self.rewards = {
@@ -39,77 +33,7 @@ class Game:
         return self.vision.parse_game_board()
 
     def preprocess_state(self, board):
-        # one hot
-        total_number_of_colors = 7
-        #number_of_relevant_colors = 6
-        #pieces = board.board.reshape(GAME_BOARD_Y, GAME_BOARD_X, 1)
-        #print(board.board.shape, board.board.dtype)
-        state = np.eye(total_number_of_colors)[board.board]
-        reduced_state = state[:, 1:-1:2, :] # eliminate edge blank spaces, turn 2-cells-per-ball into one
-        state = reduced_state
-
-        #print(state.shape)
-        known_balls = state[:, :, 1:]
-        #other_color_indexes = list(set(range(total_number_of_colors)) - set([0, board.current_ball, board.next_ball]))
-
-        current_matching_balls = state[:, :, board.current_ball]
-        #current_non_matching_balls = np.sum(known_balls, axis=2) - current_matching_balls
-
-        next_matching_balls = state[:, :, board.next_ball]
-        #next_non_matching_balls = np.sum(known_balls, axis=2) - next_matching_balls
-
-        #other_color_balls = state[:, :, other_color_indexes]
-        #extra_info = np.zeros((GAME_BOARD_Y, GAME_BOARD_X, 1))
-        #extra_info[0, :max_state_number, 0] = np.eye(max_state_number)[board.current_ball].T
-        #extra_info[1, :max_state_number, 0] = np.eye(max_state_number)[board.next_ball].T
-        #print(extra_info)
-        #print(extra_info.shape)
-        #non_matching_balls = np.sum(known_balls, axis=2) - matching_balls
-        #print(non_matching_balls)
-        #print(non_matching_balls.shape)
-
-        #state = np.dstack((matching_balls, non_matching_balls, state))
-        #state = np.dstack((current_matching_balls, current_non_matching_balls, next_matching_balls, next_non_matching_balls))
-        state = np.dstack((current_matching_balls, next_matching_balls, known_balls))
-        #state = np.dstack((current_matching_balls, next_matching_balls, other_color_balls))
-        #print(state.shape)
-        # print(state)
-        #print(state[:, :, 0])
-
-        #normalized_state = state / max_state_number
-        #print(state.shape, board.current_ball, board.next_ball)
-
-        return state
-
-    def get_state_categorized(self):
-        board = self.vision.parse_game_board()
-        pieces = board.board.reshape(GAME_BOARD_Y, GAME_BOARD_X, 1)
-        extra_info = np.zeros((GAME_BOARD_Y, GAME_BOARD_X, 1))
-        extra_info[0, 0, 0] = board.current_ball
-
-        state = np.dstack((extra_info, pieces))
-
-        max_state_number = 6
-        normalized_state = state / max_state_number
-
-        return normalized_state
-
-    def get_state_screenshot(self):
-        board = self.vision.get_game_board()
-        # crop out sidebar, leave the game board and the next steps possible
-        screen = board.screen[:board.h, :board.w-200]
-        if COLOR_SPACE == 1:
-            grayscale = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
-            img = cv2.resize(grayscale, (GAME_BOARD_DIMENSION, GAME_BOARD_DIMENSION))
-        elif COLOR_SPACE == 3:
-            img = cv2.resize(screen, (GAME_BOARD_DIMENSION, GAME_BOARD_DIMENSION))
-        else:
-            raise Exception("Unknown COLOR_SPACE", COLOR_SPACE)
-
-        img = np.array(img)
-        img = np.reshape(img, (GAME_BOARD_DIMENSION, GAME_BOARD_DIMENSION, COLOR_SPACE,))
-        normalized_img = img / 255.0
-        return normalized_img
+        return self.state_preprocessor.preprocess(board)
 
     def perform_move(self, target_x, target_y):
         self.steps_made += 1

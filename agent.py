@@ -1,6 +1,5 @@
 import time
 import numpy as np
-import cv2
 import random
 import tensorflow as tf
 from modified_tensorboard import ModifiedTensorBoard
