@@ -38,7 +38,6 @@ class Agent:
         self.graph = tf.get_default_graph()
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
-        #config.log_device_placement = True
         self.sess = tf.Session(config=config)
         tf.keras.backend.set_session(self.sess)
 
@@ -93,8 +92,6 @@ class Agent:
                 return self.model
 
     def save_model(self, path=None):
-        # TODO: disabling temporarily while setting up multiprocessing agents
-        #return False
         if not path:
             assert(self.filename != None)
             path = self.filename
@@ -109,7 +106,6 @@ class Agent:
         model.add(tf.keras.layers.Dense(500, activation='relu'))
         model.add(tf.keras.layers.Dense(self.move_size, activation='linear'))
         model.compile(
-                # loss='mse',
                 loss=huber_loss_mean,
                 optimizer=tf.keras.optimizers.RMSprop(lr=self.learning_rate))
         return model
@@ -124,7 +120,6 @@ class Agent:
         model.add(tf.keras.layers.Dense(self.move_size, activation='linear'))
 
         model.compile(
-                # loss=loss,
                 loss='mse',
                 optimizer=tf.keras.optimizers.Adam(lr=self.learning_rate),
                 metrics=['accuracy'])
@@ -132,7 +127,6 @@ class Agent:
 
     def _build_pooled_convolutional_model(self):
         model = tf.keras.models.Sequential()
-        # model.add(tf.keras.layers.Reshape(input_shape=(30000,), target_shape=(100, 100, 3)))
         model.add(tf.keras.layers.Conv2D(512, (4, 4), input_shape=(GAME_BOARD_DIMENSION, GAME_BOARD_DIMENSION, COLOR_SPACE), kernel_initializer=tf.keras.initializers.VarianceScaling(scale=2)))
         model.add(tf.keras.layers.Activation('relu'))
         model.add(tf.keras.layers.MaxPooling2D(pool_size=(2, 2)))
@@ -149,17 +143,13 @@ class Agent:
         model.add(tf.keras.layers.Dense(self.move_size, activation='linear', kernel_initializer=tf.keras.initializers.VarianceScaling(scale=2)))
 
         model.compile(
-                # loss='mse',
                 loss=huber_loss_mean,
                 optimizer=tf.keras.optimizers.Adam(lr=self.learning_rate),
-                # optimizer=tf.keras.optimizers.RMSprop(lr=self.learning_rate),
-                # optimizer=tf.train.RMSPropOptimizer(learning_rate=self.learning_rate),
                 metrics=['accuracy'])
         return model
 
     def _build_convolutional_model2(self):
         model = tf.keras.models.Sequential()
-        # model.add(tf.keras.layers.Reshape(target_shape=(GAME_BOARD_DIMENSION, GAME_BOARD_DIMENSION, COLOR_SPACE)))
         model.add(tf.keras.layers.Conv2D(32, (5, 8), strides=(4, 4), activation='relu', input_shape=(GAME_BOARD_DIMENSION, GAME_BOARD_DIMENSION, COLOR_SPACE), kernel_initializer=tf.keras.initializers.VarianceScaling(scale=2)))
         model.add(tf.keras.layers.Conv2D(64, (4, 4), strides=(3, 3), activation='relu', kernel_initializer=tf.keras.initializers.VarianceScaling(scale=2)))
         model.add(tf.keras.layers.Conv2D(64, (3, 3), activation='relu', kernel_initializer=tf.keras.initializers.VarianceScaling(scale=2)))
@@ -168,10 +158,7 @@ class Agent:
         model.add(tf.keras.layers.Dense(units=self.move_size, activation='linear', kernel_initializer=tf.keras.initializers.VarianceScaling(scale=2)))
 
         model.compile(
-            # loss='mse',
             loss=huber_loss_mean,
-            # loss=huber_loss,
-            # optimizer=tf.keras.optimizers.RMSprop(lr=self.learning_rate),
             optimizer=tf.keras.optimizers.Adam(lr=self.learning_rate),
             metrics=['accuracy'])
 

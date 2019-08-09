@@ -3,12 +3,9 @@ from game import Game
 from prioritized_memory import Memory
 import numpy as np
 from selenium_browser import SeleniumBrowser
-import logging
 import queue
 import multiprocessing
 from multiprocessing import Process, Queue
-
-#logging.basicConfig(level=logging.DEBUG)
 
 COLOR_SPACE = 3
 GAME_BOARD_X = 17

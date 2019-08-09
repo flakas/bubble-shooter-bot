@@ -1,7 +1,5 @@
 import random
 import numpy
-import os
-import pickle
 
 class SumTree:
     write = 0

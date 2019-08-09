@@ -115,7 +115,7 @@ class Game:
         self.steps_made += 1
         start = time.time()
         self.wait_for_animations_to_stop()
-        # self.review_game_board()
+
         board = self.vision.get_game_board()
         after_first_board = time.time()
 

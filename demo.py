@@ -1,29 +1,17 @@
-# dueling1_mse_vsinit_0.99eps_0.9gamma_0.00025lr_4refr_1000upfr_0.6memal_32bs_normbinaryrewards_parsedstate_onlycurnext-1563745230
-from vision import ScreenshotSource, SeleniumSource, Vision
+from vision import SeleniumSource, Vision
 from game import Game
-# from memory import Memory
 from prioritized_memory import Memory
-import cv2
-import numpy as np
 from selenium_browser import SeleniumBrowser
-# import asyncio
-import logging
-import time
 import queue
 import multiprocessing
 from multiprocessing import Process, Queue
-import os
 from visualizer import Visualizer
-
-#logging.basicConfig(level=logging.DEBUG)
 
 GAME_BOARD_DIMENSION = 64
 COLOR_SPACE = 3
 GAME_BOARD_X = 35
 GAME_BOARD_Y = 15
 GAME_BOARD_DEPTH = 4
-
-#os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
 class AgentProcess:
     def __init__(self, config, my_queue, worker_queues):
@@ -32,11 +20,9 @@ class AgentProcess:
         self.config = config
         self.my_queue = my_queue
         self.worker_queues = worker_queues
-        #os.environ['CUDA_VISIBLE_DEVICES'] = '0'
         self.memory = Memory(config['memory_size'], epsilon=config['memory_epsilon'], alpha=config['memory_alpha'])
         self.memory.load_from_file()
         self.agent = Agent(
-                #state_size=GAME_BOARD_DIMENSION*GAME_BOARD_DIMENSION*COLOR_SPACE,
                 state_size=GAME_BOARD_X*GAME_BOARD_Y*GAME_BOARD_DEPTH,
                 action_size=config['action_size'],
                 move_size=config['move_size'],
@@ -92,7 +78,6 @@ class PlayerActor:
         return self.my_queue.get(block=True)
 
     def start(self, action_size, move_size):
-        # print('Got a request to start the trainer')
         self.selenium = SeleniumBrowser(headless=False)
         self.selenium_source = SeleniumSource(self.selenium)
         self.vision = Vision(self.selenium_source, templates_path='templates/')
@@ -105,7 +90,6 @@ class PlayerActor:
         self.selenium.cleanup()
 
     def play(self, episodes, steps):
-        # print('Got a request to train in trainer')
         episode_rewards = []
         for e in range(episodes):
             state = self.game.get_state()
@@ -120,7 +104,6 @@ class PlayerActor:
                 action = response['recommended_action']
                 evaluations = response['action_evaluations']
                 self.send_to_visualizer({'command': 'show_evaluations', 'action': action, 'evaluations': evaluations})
-                #action = agent.act(state).get()
                 actions_taken.append(action)
 
                 reward = self.game.perform_move(action, 400)
@@ -128,10 +111,6 @@ class PlayerActor:
                 next_state = self.game.get_state()
                 done = self.game.is_finished()
 
-                #self.send_to_agent({'command': 'remember', 'state': state, 'action': action, 'reward': reward, 'next_state': next_state, 'done': done})
-                #self.send_to_agent({'command': 'after_step', 'step': time_t})
-                #agent.remember(state, action, reward, next_state, done).get()
-                #agent.after_step(time_t)
                 print(f'[AGENT] Episode: {e}/{episodes}, step: {time_t}/{steps}, action: {action}, reward: {reward}/{total_reward}, done: {done}')
 
                 state = next_state
@@ -198,7 +177,6 @@ class GameplaySupervisorActor:
             worker.start()
 
     def wait_to_finish(self):
-        #agent_worker(config, self.agent_queue, self.worker_queues)
         for worker in self.workers:
             worker.join()
         self.agent.terminate()
