@@ -2,8 +2,8 @@ import time
 import numpy as np
 import random
 import tensorflow as tf
-from modified_tensorboard import ModifiedTensorBoard
-from coordinate_mapper import CoordinateMapper
+from bubble_shooter.modified_tensorboard import ModifiedTensorBoard
+from bubble_shooter.coordinate_mapper import CoordinateMapper
 import os
 
 GAME_BOARD_DIMENSION = 64
