@@ -7,6 +7,7 @@ class Convolutional:
 
     def build(self):
         import tensorflow as tf
+
         model = tf.keras.models.Sequential()
         model.add(tf.keras.layers.Conv2D(filters=32, kernel_size=[8, 8], strides=[4, 4], padding='valid', activation='relu'), input_shape=self.input_shape)
         model.add(tf.keras.layers.Conv2D(filters=64, kernel_size=[4, 4], strides=[2, 2], padding='valid', activation='relu'))

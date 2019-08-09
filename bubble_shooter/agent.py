@@ -102,17 +102,11 @@ class Agent:
     def act(self, state):
         if np.random.rand() <= self.epsilon or not self.memory.has_enough_samples(32):
             action = random.randrange(self.move_size)
+            return self.coordinate_mapper.agent_to_game(action)
         else:
-            state = np.array(state).reshape((1,) + self.state_shape)
-            act_values = self.predict(state)
-            top_actions = act_values[0].argsort()[-5:][::-1]
+            result = self.act_with_stats(state)
+            return result['recommended_action']
 
-            action = top_actions[0]
-            top_q_values = list((a, act_values[0][a]) for a in top_actions)
-            q_value = np.max(act_values[0])
-            print(f'NN moving to {action} (Q: {q_value}) (Top Q: {top_q_values})')
-
-        return self.coordinate_mapper.agent_to_game(action)
 
     def act_with_stats(self, state):
         """ Chooses the recommended action and returns evaluations for all other actions """

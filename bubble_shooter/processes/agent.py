@@ -1,7 +1,6 @@
 import queue
 from bubble_shooter.prioritized_memory import Memory
 from bubble_shooter.coordinate_mapper import CoordinateMapper
-from bubble_shooter.models.dueling_inception import DuelingInception
 
 class AgentProcess:
     def __init__(self, config, my_queue, worker_queues):
