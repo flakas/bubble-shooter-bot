@@ -4,12 +4,18 @@ import time
 import random
 
 class Visualizer:
+    """
+    Visualizes agent's Q-values for every action as a bar graph.
+    """
+
     def __init__(self, width, action_space, timeout=1000):
         self.width = width
         self.action_space = action_space
         self.cell_width = width//action_space
         self.max_bar_height = 20 # px
         self.timeout = timeout
+        self.bar_color = (0, 255, 0) # green
+        self.chosen_bar_color = (0, 0, 255) # red
 
     def show_evaluations(self, chosen_action, evaluations):
         img = np.zeros((self.max_bar_height, self.width, 3), dtype=np.uint8)
@@ -25,8 +31,7 @@ class Visualizer:
             top_left = (int(x), int(self.max_bar_height-bar_height))
             bottom_right = (int(x+self.cell_width-1), self.max_bar_height)
             corners.append((x, top_left, bottom_right))
-            color = (0, 255, 0) if x == chosen_action else (0, 0, 255)
-            #print(x, bar_height, top_left, bottom_right)
+            color = self.bar_color if x == chosen_action else self.chosen_bar_color
             img = cv2.rectangle(img, top_left, bottom_right, color, -1)
 
         cv2.imshow('evaluations', img)

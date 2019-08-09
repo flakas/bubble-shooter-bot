@@ -1,8 +1,10 @@
 import tensorflow as tf
 from keras.callbacks import TensorBoard
 
-# Own Tensorboard class
 class ModifiedTensorBoard(TensorBoard):
+    """
+    A customized Tensorboard class to make it easier to track custom metrics
+    """
 
     # Overriding init to set initial step and writer (we want one log file for all .fit() calls)
     def __init__(self, **kwargs):

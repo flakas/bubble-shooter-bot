@@ -4,8 +4,9 @@ import cv2
 import time
 import numpy as np
 
-class SeleniumBrowser:
+Board = namedtuple('Board', ['x', 'y', 'w', 'h', 'screen'])
 
+class SeleniumBrowser:
     def __init__(self):
         self.game_url = 'http://localhost/'
         profile = webdriver.FirefoxProfile()
@@ -16,7 +17,7 @@ class SeleniumBrowser:
 
     def setup(self):
         self.driver.get(self.game_url)
-        time.sleep(1)
+        time.sleep(1) # Wait for the flash game to load
         self.game_board_element = self.get_game_board_element()
 
     def cleanup(self):
@@ -34,7 +35,6 @@ class SeleniumBrowser:
         (x, y, w, h) = (int(rect['x']), int(rect['y']), int(rect['width']), int(rect['height']))
         cropped_image = decoded_img[y:y+h, x:x+w]
 
-        Board = namedtuple('Board', ['x', 'y', 'w', 'h', 'screen'])
         return Board(x, y, w, h, cropped_image)
 
     def move_to(self, x, y):

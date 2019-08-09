@@ -60,7 +60,7 @@ class SumTree:
     def count(self):
         return self.samples_seen if self.capacity > self.samples_seen else self.capacity
 
-class Memory:   # stored as ( s, a, r, s_ ) in SumTree
+class Memory:   # stored as ( state, action, reward, new_state, done ) in SumTree
 
     def __init__(self, capacity, epsilon, alpha):
         self.tree = SumTree(capacity)

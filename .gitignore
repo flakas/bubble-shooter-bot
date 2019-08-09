@@ -1,11 +1,11 @@
 .*.sw*
 *.pyc
-checkpoints/
+/checkpoints/
 geckodriver.log
-logs/
-logs_inception/
-memory/
-models/
+/logs/
+/logs_inception/
+/memory/
+/models/
 *.pickle
-venv/
+/venv/
 model.png

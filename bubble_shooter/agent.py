@@ -2,35 +2,15 @@ import time
 import numpy as np
 import random
 import tensorflow as tf
+import os
 from bubble_shooter.modified_tensorboard import ModifiedTensorBoard
 from bubble_shooter.coordinate_mapper import CoordinateMapper
-import os
 
 GAME_BOARD_DIMENSION = 64
 COLOR_SPACE = 3
 GAME_BOARD_X = 17
 GAME_BOARD_Y = 15
 GAME_BOARD_DEPTH = 8
-
-'''
- ' Huber loss.
- ' https://jaromiru.com/2017/05/27/on-using-huber-loss-in-deep-q-learning/
- ' https://en.wikipedia.org/wiki/Huber_loss
-'''
-def huber_loss(y_true, y_pred, clip_delta=1.0):
-    error = y_true - y_pred
-    cond  = tf.keras.backend.abs(error) < clip_delta
-
-    squared_loss = 0.5 * tf.keras.backend.square(error)
-    linear_loss  = clip_delta * (tf.keras.backend.abs(error) - 0.5 * clip_delta)
-
-    return tf.where(cond, squared_loss, linear_loss)
-
-'''
- ' Same as above but returns the mean loss.
-'''
-def huber_loss_mean(y_true, y_pred, clip_delta=1.0):
-    return tf.keras.backend.mean(huber_loss(y_true, y_pred, clip_delta))
 
 class Agent:
     def __init__(self, state_size, action_size, move_size, memory, epsilon=1.0, gamma=0.9, learning_rate=0.00025, update_target_frequency=10, replay_frequency=4, batch_size=32, preplay_steps=500, name=None):
@@ -99,152 +79,46 @@ class Agent:
                 self.model.save_weights(path)
 
     def _build_simple_dense_model(self):
-        model = tf.keras.models.Sequential()
-        model.add(tf.keras.layers.Flatten(input_shape=(GAME_BOARD_DIMENSION, GAME_BOARD_DIMENSION, COLOR_SPACE)))
-        model.add(tf.keras.layers.Dense(500, activation='relu'))
-        model.add(tf.keras.layers.Dense(500, activation='relu'))
-        model.add(tf.keras.layers.Dense(self.move_size, activation='linear'))
-        model.compile(
-                loss=huber_loss_mean,
-                optimizer=tf.keras.optimizers.RMSprop(lr=self.learning_rate))
-        return model
+        from bubble_shooter.models.simple_dense import SimpleDense
+        input_shape = (GAME_BOARD_DIMENSION, GAME_BOARD_DIMENSION, COLOR_SPACE)
+        output_shape = self.move_size
+        model = SimpleDense(input_shape=input_shape, output_shape=output_shape, self.learning_rate)
+        return model.build()
 
     def _build_convolutional_model(self):
-        model = tf.keras.models.Sequential()
-        model.add(tf.keras.layers.Conv2D(filters=32, kernel_size=[8, 8], strides=[4, 4], padding='valid', activation='relu'), input_shape=(GAME_BOARD_DIMENSION, GAME_BOARD_DIMENSION, COLOR_SPACE))
-        model.add(tf.keras.layers.Conv2D(filters=64, kernel_size=[4, 4], strides=[2, 2], padding='valid', activation='relu'))
-        model.add(tf.keras.layers.Conv2D(filters=128, kernel_size=[4, 4], strides=[2, 2], padding='valid', activation='relu'))
-        model.add(tf.keras.layers.Flatten())
-        model.add(tf.keras.layers.Dense(512, activation='relu'))
-        model.add(tf.keras.layers.Dense(self.move_size, activation='linear'))
-
-        model.compile(
-                loss='mse',
-                optimizer=tf.keras.optimizers.Adam(lr=self.learning_rate),
-                metrics=['accuracy'])
-        return model
+        from bubble_shooter.models.convolutional import Convolutional
+        input_shape = (GAME_BOARD_DIMENSION, GAME_BOARD_DIMENSION, COLOR_SPACE)
+        output_shape = self.move_size
+        model = Convolutional(input_shape=input_shape, output_shape=output_shape, self.learning_rate)
+        return model.build()
 
     def _build_pooled_convolutional_model(self):
-        model = tf.keras.models.Sequential()
-        model.add(tf.keras.layers.Conv2D(512, (4, 4), input_shape=(GAME_BOARD_DIMENSION, GAME_BOARD_DIMENSION, COLOR_SPACE), kernel_initializer=tf.keras.initializers.VarianceScaling(scale=2)))
-        model.add(tf.keras.layers.Activation('relu'))
-        model.add(tf.keras.layers.MaxPooling2D(pool_size=(2, 2)))
-        model.add(tf.keras.layers.Dropout(0.2))
-        # model.add(tf.keras.layers.SpatialDropout2D(0.1))
-
-        model.add(tf.keras.layers.Conv2D(256, (4, 4), kernel_initializer=tf.keras.initializers.VarianceScaling(scale=2)))
-        model.add(tf.keras.layers.Activation('relu'))
-        model.add(tf.keras.layers.MaxPooling2D(pool_size=(2, 2)))
-        model.add(tf.keras.layers.Dropout(0.2))
-        # model.add(tf.keras.layers.SpatialDropout2D(0.1))
-
-        model.add(tf.keras.layers.Flatten())
-        model.add(tf.keras.layers.Dense(self.move_size, activation='linear', kernel_initializer=tf.keras.initializers.VarianceScaling(scale=2)))
-
-        model.compile(
-                loss=huber_loss_mean,
-                optimizer=tf.keras.optimizers.Adam(lr=self.learning_rate),
-                metrics=['accuracy'])
-        return model
+        from bubble_shooter.models.pooled_convolutional import PooledConvolutional
+        input_shape = (GAME_BOARD_DIMENSION, GAME_BOARD_DIMENSION, COLOR_SPACE)
+        output_shape = self.move_size
+        model = PooledConvolutional(input_shape=input_shape, output_shape=output_shape, self.learning_rate)
+        return model.build()
 
     def _build_convolutional_model2(self):
-        model = tf.keras.models.Sequential()
-        model.add(tf.keras.layers.Conv2D(32, (5, 8), strides=(4, 4), activation='relu', input_shape=(GAME_BOARD_DIMENSION, GAME_BOARD_DIMENSION, COLOR_SPACE), kernel_initializer=tf.keras.initializers.VarianceScaling(scale=2)))
-        model.add(tf.keras.layers.Conv2D(64, (4, 4), strides=(3, 3), activation='relu', kernel_initializer=tf.keras.initializers.VarianceScaling(scale=2)))
-        model.add(tf.keras.layers.Conv2D(64, (3, 3), activation='relu', kernel_initializer=tf.keras.initializers.VarianceScaling(scale=2)))
-        model.add(tf.keras.layers.Flatten())
-        model.add(tf.keras.layers.Dense(units=512, activation='relu', kernel_initializer=tf.keras.initializers.VarianceScaling(scale=2)))
-        model.add(tf.keras.layers.Dense(units=self.move_size, activation='linear', kernel_initializer=tf.keras.initializers.VarianceScaling(scale=2)))
-
-        model.compile(
-            loss=huber_loss_mean,
-            optimizer=tf.keras.optimizers.Adam(lr=self.learning_rate),
-            metrics=['accuracy'])
-
-        return model
+        from bubble_shooter.models.deepmind_convolutional import DeepmindConvolutional
+        input_shape = (GAME_BOARD_DIMENSION, GAME_BOARD_DIMENSION, COLOR_SPACE)
+        output_shape = self.move_size
+        model = DeepmindConvolutional(input_shape=input_shape, output_shape=output_shape, self.learning_rate)
+        return model.build()
 
     def _build_dueling_model(self):
-        model = tf.keras.models.Sequential()
-
-        input_layer = tf.keras.layers.Input(shape=(GAME_BOARD_Y, GAME_BOARD_X, GAME_BOARD_DEPTH))
-        conv1 = tf.keras.layers.Conv2D(32, (4, 4), activation='relu')(input_layer)
-        conv2 = tf.keras.layers.Conv2D(64, (2, 2), activation='relu')(conv1)
-        conv3 = tf.keras.layers.Conv2D(64, (1, 1), activation='relu')(conv2)
-        flatten = tf.keras.layers.Flatten()(conv3)
-
-        fc1 = tf.keras.layers.Dense(64)(flatten)
-
-        advantage = tf.keras.layers.Dense(self.move_size)(fc1)
-        value = tf.keras.layers.Dense(1)(fc1)
-
-        advantage = tf.keras.layers.Lambda(lambda advantage: advantage - tf.reduce_mean(advantage, axis=-1, keep_dims=True))(advantage)
-        value = tf.keras.layers.Lambda(lambda value: tf.tile(value, [1, self.move_size]))(value)
-        policy = tf.keras.layers.Add()([value, advantage])
-
-        model = tf.keras.models.Model(inputs=[input_layer], outputs=[policy], name='agent_model')
-
-        model.compile(
-            loss='mse',
-            optimizer=tf.keras.optimizers.Adam(self.learning_rate),
-            metrics=['accuracy'])
-
-        return model
+        from bubble_shooter.models.dueling import Dueling
+        input_shape = (GAME_BOARD_DIMENSION, GAME_BOARD_DIMENSION, COLOR_SPACE)
+        output_shape = self.move_size
+        model = Dueling(input_shape=input_shape, output_shape=output_shape, self.learning_rate)
+        return model.build()
 
     def _build_dueling_model_ala_inception(self):
-        model = tf.keras.models.Sequential()
-
-        input_layer = tf.keras.layers.Input(shape=(GAME_BOARD_Y, GAME_BOARD_X, GAME_BOARD_DEPTH))
-        #first_layer = tf.keras.layers.Conv2D(32, (2, 2), activation='relu')(input_layer)
-        first_layer = input_layer
-
-        first_branch = tf.keras.layers.Conv2D(16, (1, 1), activation='relu', padding='same')(first_layer)
-        second_branch = tf.keras.layers.Conv2D(16, (1, 1), activation='relu', padding='same')(first_layer)
-        second_branch = tf.keras.layers.Conv2D(64, (3, 3), activation='relu', padding='same')(second_branch)
-        third_branch = tf.keras.layers.Conv2D(16, (1, 1), activation='relu', padding='same')(first_layer)
-        third_branch = tf.keras.layers.Conv2D(64, (5, 5), activation='relu', padding='same')(third_branch)
-        fourth_branch = tf.keras.layers.MaxPooling2D((3, 3), strides=(1, 1), padding='same')(first_layer)
-        fourth_branch = tf.keras.layers.Conv2D(64, (1, 1), activation='relu', padding='same')(fourth_branch)
-
-        #third_branch = tf.keras.layers.MaxPooling2D((3, 3), padding='same')(input_layer)
-        #third_branch = tf.keras.layers.Conv2D(32, (1, 1), activation='relu', padding='same')(third_branch)
-
-        concat = tf.keras.layers.concatenate([first_branch, second_branch, third_branch, fourth_branch])
-        #pooled = tf.keras.layers.MaxPooling2D((3, 3), padding='same')(concat)
-
-        first_branch = tf.keras.layers.Conv2D(64, (1, 1), activation='relu', padding='same')(concat)
-        second_branch = tf.keras.layers.Conv2D(16, (1, 1), activation='relu', padding='same')(concat)
-        second_branch = tf.keras.layers.Conv2D(64, (3, 3), activation='relu', padding='same')(second_branch)
-        third_branch = tf.keras.layers.Conv2D(16, (1, 1), activation='relu', padding='same')(concat)
-        third_branch = tf.keras.layers.Conv2D(64, (5, 5), activation='relu', padding='same')(third_branch)
-        fourth_branch = tf.keras.layers.MaxPooling2D((3, 3), strides=(1, 1), padding='same')(concat)
-        fourth_branch = tf.keras.layers.Conv2D(64, (1, 1), activation='relu', padding='same')(fourth_branch)
-
-        concat = tf.keras.layers.concatenate([first_branch, second_branch, third_branch, fourth_branch])
-
-        #pooled = tf.keras.layers.MaxPooling2D((3, 3))(concat)
-        conv = tf.keras.layers.Conv2D(64, (1, 1), activation='relu')(concat)
-        flatten = tf.keras.layers.Flatten()(conv)
-
-        fc1 = tf.keras.layers.Dense(64, activation='relu')(flatten)
-        dropout = tf.keras.layers.Dropout(0.7)(fc1)
-
-        advantage = tf.keras.layers.Dense(self.move_size)(fc1)
-        value = tf.keras.layers.Dense(1)(fc1)
-        # ----
-
-        advantage = tf.keras.layers.Lambda(lambda advantage: advantage - tf.reduce_mean(advantage, axis=-1, keep_dims=True))(advantage)
-        value = tf.keras.layers.Lambda(lambda value: tf.tile(value, [1, self.move_size]))(value)
-        policy = tf.keras.layers.Add()([value, advantage])
-
-        model = tf.keras.models.Model(inputs=[input_layer], outputs=[policy], name='agent_model')
-
-        model.compile(
-            loss='mse',
-            optimizer=tf.keras.optimizers.RMSprop(self.learning_rate),
-            metrics=['accuracy'])
-
-        return model
-
+        from bubble_shooter.models.dueling_inception import DuelingInception
+        input_shape = (GAME_BOARD_DIMENSION, GAME_BOARD_DIMENSION, COLOR_SPACE)
+        output_shape = self.move_size
+        model = DuelingInception(input_shape=input_shape, output_shape=output_shape, self.learning_rate)
+        return model.build()
 
     def _build_model(self):
         # model = self._build_simple_dense_model()

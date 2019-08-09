@@ -26,14 +26,9 @@ class Game:
         self.vision.refresh()
 
     def get_state(self):
-        board = self.get_vision_state()
-        return self.preprocess_state(board)
-
-    def get_vision_state(self):
-        return self.vision.parse_game_board()
-
-    def preprocess_state(self, board):
-        return self.state_preprocessor.preprocess(board)
+        board = self.vision.parse_game_board()
+        state = self.state_preprocessor.preprocess(board)
+        return state
 
     def perform_move(self, target_x, target_y):
         self.steps_made += 1

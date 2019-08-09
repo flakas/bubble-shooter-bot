@@ -1,4 +1,9 @@
 class CoordinateMapper:
+    """
+    Number of actions agents can make is intentionally limited.
+    This utility class helps map between game offsets and agent actions
+    """
+
     def __init__(self, board_width, agent_moves):
         self.board_width = board_width
         self.agent_moves = agent_moves
