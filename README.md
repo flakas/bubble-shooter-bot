@@ -19,6 +19,6 @@ virtualenv -p python3 --system-site-packages venv
 source venv/bin/activate
 pip install -r requirements.txt
 cd webpage && sudo python -m SimpleHTTPServer 80 # to run a local version of Bubble Shooter
-python train_multiprocess.py
+python train.py
 python demo.py
 ```
