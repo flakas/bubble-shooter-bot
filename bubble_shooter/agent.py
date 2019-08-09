@@ -4,37 +4,31 @@ import random
 import tensorflow as tf
 import os
 from bubble_shooter.modified_tensorboard import ModifiedTensorBoard
-from bubble_shooter.coordinate_mapper import CoordinateMapper
-
-GAME_BOARD_DIMENSION = 64
-COLOR_SPACE = 3
-GAME_BOARD_X = 17
-GAME_BOARD_Y = 15
-GAME_BOARD_DEPTH = 8
 
 class Agent:
-    def __init__(self, state_size, action_size, move_size, memory, epsilon=1.0, gamma=0.9, learning_rate=0.00025, update_target_frequency=10, replay_frequency=4, batch_size=32, preplay_steps=500, name=None):
+    def __init__(self, coordinate_mapper, model_builder, state_shape, move_size, memory, epsilon=1.0, gamma=0.9, update_target_frequency=10, replay_frequency=4, batch_size=32, preplay_steps=500, name=None):
         self.graph = tf.get_default_graph()
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
         self.sess = tf.Session(config=config)
         tf.keras.backend.set_session(self.sess)
 
-        self.state_size = state_size
-        self.action_size = action_size
+        self.state_shape = state_shape
+        self.coordinate_mapper = coordinate_mapper
         self.move_size = move_size
-        self.coordinate_mapper = CoordinateMapper(action_size, move_size)
         self.memory = memory
         self.gamma = gamma
         self.epsilon = epsilon
         self.epsilon_min = 0.1
         self.epsilon_decay = 0.99 # 0.995
-        self.learning_rate = learning_rate
         self.batch_size = batch_size
-        self.name = name
+        self.name = f'{model_builder.name}_{name}'
         self.update_target_frequency = update_target_frequency
         self.replay_frequency = replay_frequency
         self.preplay_steps = preplay_steps
+
+        self.model_builder = model_builder
+
         self.steps = 0
         self.episode = 0
 
@@ -78,56 +72,8 @@ class Agent:
             with self.graph.as_default():
                 self.model.save_weights(path)
 
-    def _build_simple_dense_model(self):
-        from bubble_shooter.models.simple_dense import SimpleDense
-        input_shape = (GAME_BOARD_DIMENSION, GAME_BOARD_DIMENSION, COLOR_SPACE)
-        output_shape = self.move_size
-        model = SimpleDense(input_shape=input_shape, output_shape=output_shape, self.learning_rate)
-        return model.build()
-
-    def _build_convolutional_model(self):
-        from bubble_shooter.models.convolutional import Convolutional
-        input_shape = (GAME_BOARD_DIMENSION, GAME_BOARD_DIMENSION, COLOR_SPACE)
-        output_shape = self.move_size
-        model = Convolutional(input_shape=input_shape, output_shape=output_shape, self.learning_rate)
-        return model.build()
-
-    def _build_pooled_convolutional_model(self):
-        from bubble_shooter.models.pooled_convolutional import PooledConvolutional
-        input_shape = (GAME_BOARD_DIMENSION, GAME_BOARD_DIMENSION, COLOR_SPACE)
-        output_shape = self.move_size
-        model = PooledConvolutional(input_shape=input_shape, output_shape=output_shape, self.learning_rate)
-        return model.build()
-
-    def _build_convolutional_model2(self):
-        from bubble_shooter.models.deepmind_convolutional import DeepmindConvolutional
-        input_shape = (GAME_BOARD_DIMENSION, GAME_BOARD_DIMENSION, COLOR_SPACE)
-        output_shape = self.move_size
-        model = DeepmindConvolutional(input_shape=input_shape, output_shape=output_shape, self.learning_rate)
-        return model.build()
-
-    def _build_dueling_model(self):
-        from bubble_shooter.models.dueling import Dueling
-        input_shape = (GAME_BOARD_DIMENSION, GAME_BOARD_DIMENSION, COLOR_SPACE)
-        output_shape = self.move_size
-        model = Dueling(input_shape=input_shape, output_shape=output_shape, self.learning_rate)
-        return model.build()
-
-    def _build_dueling_model_ala_inception(self):
-        from bubble_shooter.models.dueling_inception import DuelingInception
-        input_shape = (GAME_BOARD_DIMENSION, GAME_BOARD_DIMENSION, COLOR_SPACE)
-        output_shape = self.move_size
-        model = DuelingInception(input_shape=input_shape, output_shape=output_shape, self.learning_rate)
-        return model.build()
-
     def _build_model(self):
-        # model = self._build_simple_dense_model()
-        # model = self._build_convolutional_model()
-        # model = self._build_pooled_convolutional_model()
-        # model = self._build_convolutional_model2()
-        #model = self._build_dueling_model()
-        model = self._build_dueling_model_ala_inception()
-        return model
+        return self.model_builder.build()
 
     def refresh_target_model(self):
         with self.sess.as_default():
@@ -157,7 +103,7 @@ class Agent:
         if np.random.rand() <= self.epsilon or not self.memory.has_enough_samples(32):
             action = random.randrange(self.move_size)
         else:
-            state = np.array(state).reshape((1, GAME_BOARD_Y, GAME_BOARD_X, GAME_BOARD_DEPTH))
+            state = np.array(state).reshape((1,) + self.state_shape)
             act_values = self.predict(state)
             top_actions = act_values[0].argsort()[-5:][::-1]
 
@@ -171,7 +117,7 @@ class Agent:
     def act_with_stats(self, state):
         """ Chooses the recommended action and returns evaluations for all other actions """
 
-        state = np.array(state).reshape((1, GAME_BOARD_Y, GAME_BOARD_X, GAME_BOARD_DEPTH))
+        state = np.array(state).reshape((1,) + self.state_shape)
         act_values = self.predict(state)
         top_actions = act_values[0].argsort()[-5:][::-1]
 
@@ -217,7 +163,7 @@ class Agent:
             self.epsilon *= self.epsilon_decay
 
     def get_targets(self, batch, batch_size=1):
-        no_state = np.zeros(self.state_size)
+        no_state = np.zeros(self.state_shape)
 
         starting_states = np.array([observation[1][0] for observation in batch])
         ending_states = np.array([no_state if observation[1][3] is None else observation[1][3] for observation in batch])

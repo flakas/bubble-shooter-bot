@@ -1,6 +1,3 @@
-import tensorflow as tf
-from bubble_shooter.utils import huber_loss_mean
-
 class SimpleDense:
     def __init__(self, input_shape, output_shape, learning_rate):
         self.input_shape = input_shape
@@ -9,6 +6,9 @@ class SimpleDense:
         self.name = 'simpledense_d500_d500'
 
     def build(self):
+        import tensorflow as tf
+        from bubble_shooter.utils import huber_loss_mean
+
         model = tf.keras.models.Sequential()
         model.add(tf.keras.layers.Flatten(input_shape=self.input_shape))
         model.add(tf.keras.layers.Dense(500, activation='relu'))

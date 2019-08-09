@@ -21,12 +21,12 @@ class PlayerProcess:
     def get_from_agent(self):
         return self.my_queue.get(block=True)
 
-    def start(self, action_size, move_size):
+    def start(self, action_size, move_size, state_preprocessor):
         self.selenium = SeleniumBrowser(headless=False)
         self.selenium_source = SeleniumSource(self.selenium)
         self.vision = Vision(self.selenium_source, templates_path='templates/')
         self.controller = self.selenium
-        self.state_preprocessor = AllColorPreprocessor()
+        self.state_preprocessor = state_preprocessor
         self.game = Game(self.vision, self.controller, self.state_preprocessor)
 
         self.selenium.setup()
@@ -67,6 +67,6 @@ class PlayerProcess:
 
 def player_worker(config, agent_queue, my_queue, visualizer_queue, my_name):
     player = PlayerProcess(agent_queue, my_queue, visualizer_queue, my_name)
-    player.start(config['action_size'], config['move_size'])
+    player.start(config['action_size'], config['move_size'], config['state_preprocessor'])
     player.play(config['episodes'], config['steps'])
     player.stop()

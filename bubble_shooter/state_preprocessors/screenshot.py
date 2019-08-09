@@ -14,8 +14,10 @@ class Screenshot:
 
         if color_space == 'rgb':
             self.depth = 3
+            self.name = 'screenrgb'
         elif color_space == 'grayscale':
             self.depth = 1
+            self.name = 'screengray'
 
     def preprocess(self, board):
         # crop out sidebar, leave the game board and the next steps possible

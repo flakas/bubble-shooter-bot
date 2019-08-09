@@ -10,6 +10,7 @@ class TwoColor:
         self.width = 17
         self.height = 15
         self.depth = 4
+        self.name='twocolor'
 
     def preprocess_state(self, board):
         total_number_of_colors = 7

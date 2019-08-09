@@ -1,6 +1,5 @@
 from bubble_shooter.selenium_browser import SeleniumBrowser
 from bubble_shooter.vision import SeleniumSource, Vision
-from bubble_shooter.state_preprocessors.all_color import AllColor as AllColorPreprocessor
 from bubble_shooter.game import Game
 
 class TrainerProcess:
@@ -17,12 +16,12 @@ class TrainerProcess:
     def get_from_agent(self):
         return self.my_queue.get(block=True)
 
-    def start(self):
+    def start(self, state_preprocessor):
         self.selenium = SeleniumBrowser()
         self.selenium_source = SeleniumSource(self.selenium)
         self.vision = Vision(self.selenium_source, templates_path='templates/')
         self.controller = self.selenium
-        self.state_preprocessor = AllColorPreprocessor()
+        self.state_preprocessor = state_preprocessor
         self.game = Game(self.vision, self.controller, self.state_preprocessor)
 
         self.selenium.setup()
@@ -76,6 +75,6 @@ class TrainerProcess:
 
 def trainer_worker(config, agent_queue, my_queue, my_name):
     trainer = TrainerProcess(agent_queue, my_queue, my_name)
-    trainer.start()
+    trainer.start(config['state_preprocessor'])
     trainer.train(config['episodes'], config['steps'], config['batch_size'], config['replay_frequency'])
     trainer.stop()

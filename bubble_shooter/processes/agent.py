@@ -1,10 +1,7 @@
 import queue
 from bubble_shooter.prioritized_memory import Memory
-
-COLOR_SPACE = 3
-GAME_BOARD_X = 17
-GAME_BOARD_Y = 15
-GAME_BOARD_DEPTH = 8
+from bubble_shooter.coordinate_mapper import CoordinateMapper
+from bubble_shooter.models.dueling_inception import DuelingInception
 
 class AgentProcess:
     def __init__(self, config, my_queue, worker_queues):
@@ -17,18 +14,26 @@ class AgentProcess:
         self.worker_queues = worker_queues
         self.memory = Memory(config['memory_size'], epsilon=config['memory_epsilon'], alpha=config['memory_alpha'])
         self.memory.load_from_file()
+
+        state_preprocessor = config['state_preprocessor']
+
+        action_size = config['game_board_width']
+        move_size = config['agent_move_size']
+        state_shape = state_preprocessor.shape()
+        action_shape = move_size
+
         self.agent = Agent(
-                state_size=GAME_BOARD_X*GAME_BOARD_Y*GAME_BOARD_DEPTH,
-                action_size=560,
-                move_size=35,
+                coordinate_mapper=CoordinateMapper(action_size=action_size, move_size),
+                model_builder=config['model_builder'](state_shape, action_shape, config['learning_rate']),
+                state_shape=state_shape,
+                move_size=move_size,
                 memory=self.memory,
                 epsilon=config['epsilon'],
                 gamma=config['gamma'],
-                learning_rate=config['learning_rate'],
                 batch_size=config['batch_size'],
                 update_target_frequency=config['target_update_frequency'],
                 replay_frequency=config['replay_frequency'],
-                name=f"dueling_inception16_mse_vsinit_{config['epsilon']}eps_{config['gamma']}gamma_{config['learning_rate']}lr_{config['replay_frequency']}refr_{config['target_update_frequency']}upfr_{config['memory_alpha']}memal_{config['batch_size']}bs_normbinaryrewards_parsedsmallstate_allcolors")
+                name=f"{config['epsilon']}eps_{config['gamma']}gamma_{config['learning_rate']}lr_{config['replay_frequency']}refr_{config['target_update_frequency']}upfr_{config['memory_alpha']}memal_{config['batch_size']}bs_normbinaryrewards_{state_preprocessor.name}")
         self.episodes_seen = 0
 
     def send_message(self, worker, message):

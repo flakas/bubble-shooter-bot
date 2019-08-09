@@ -1,5 +1,3 @@
-import tensorflow as tf
-
 class DuelingInception:
     def __init__(self, input_shape, output_shape, learning_rate):
         self.input_shape = input_shape
@@ -8,6 +6,7 @@ class DuelingInception:
         self.name = 'duelinginception_2i16x64_c64_d64'
 
     def build(self):
+        import tensorflow as tf
         model = tf.keras.models.Sequential()
 
         input_layer = tf.keras.layers.Input(shape=self.input_shape)
@@ -48,4 +47,3 @@ class DuelingInception:
             metrics=['accuracy'])
 
         return model
-

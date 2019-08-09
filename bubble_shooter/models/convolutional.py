@@ -1,5 +1,3 @@
-import tensorflow as tf
-
 class Convolutional:
     def __init__(self, input_shape, output_shape, learning_rate):
         self.input_shape = input_shape
@@ -8,6 +6,7 @@ class Convolutional:
         self.name = 'convolutional_c32x8_c64x4_c128x4_d512'
 
     def build(self):
+        import tensorflow as tf
         model = tf.keras.models.Sequential()
         model.add(tf.keras.layers.Conv2D(filters=32, kernel_size=[8, 8], strides=[4, 4], padding='valid', activation='relu'), input_shape=self.input_shape)
         model.add(tf.keras.layers.Conv2D(filters=64, kernel_size=[4, 4], strides=[2, 2], padding='valid', activation='relu'))

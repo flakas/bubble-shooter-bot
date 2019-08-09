@@ -1,6 +1,3 @@
-import tensorflow as tf
-from bubble_shooter.utils import huber_loss_mean
-
 class Dueling:
     def __init__(self, input_shape, output_shape, learning_rate):
         self.input_shape = input_shape
@@ -9,6 +6,9 @@ class Dueling:
         self.name = 'dueling_c32x4_c64x2_c64x1_d64'
 
     def build(self):
+        import tensorflow as tf
+        from bubble_shooter.utils import huber_loss_mean
+
         model = tf.keras.models.Sequential()
 
         input_layer = tf.keras.layers.Input(shape=self.input_shape)

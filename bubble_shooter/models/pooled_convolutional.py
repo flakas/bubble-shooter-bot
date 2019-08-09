@@ -1,6 +1,3 @@
-import tensorflow as tf
-from bubble_shooter.utils import huber_loss_mean
-
 class PooledConvolutional:
     def __init__(self, input_shape, output_shape, learning_rate):
         self.input_shape = input_shape
@@ -9,6 +6,9 @@ class PooledConvolutional:
         self.name = 'pooled_convolutional_c512x4_px2_c256x4'
 
     def build(self):
+        import tensorflow as tf
+        from bubble_shooter.utils import huber_loss_mean
+
         model = tf.keras.models.Sequential()
         model.add(tf.keras.layers.Conv2D(512, (4, 4), input_shape=self.input_shape, kernel_initializer=tf.keras.initializers.VarianceScaling(scale=2)))
         model.add(tf.keras.layers.Activation('relu'))

@@ -10,6 +10,7 @@ class AllColor:
         self.width = 17
         self.height = 15
         self.depth = 8
+        self.name = 'allcolor'
 
     def preprocess(self, board):
         total_number_of_colors = 7
