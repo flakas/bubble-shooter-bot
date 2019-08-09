@@ -16,8 +16,8 @@ class Pretrainer:
             experiences += 1
             step += 1
             agent.remember(state, action, reward, next_state, done)
-            if only_fill_memory:
-                continue
+            #if only_fill_memory:
+                #continue
             agent.after_step(step)
             if done:
                 agent.after_episode(episode)
@@ -27,6 +27,9 @@ class Pretrainer:
         print(f'[PRETRAINER] Pretrained with {experiences} experiences')
 
     def store_experience(self, experience):
+        print(f'[PRETRAINER] Experience storage in pretrainer is disabled')
+        return
+
         with open(self.gameplay_filename, 'ab') as f:
             pickle.dump(experience, f)
 

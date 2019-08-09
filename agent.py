@@ -9,9 +9,9 @@ import os
 
 GAME_BOARD_DIMENSION = 64
 COLOR_SPACE = 3
-GAME_BOARD_X = 35
+GAME_BOARD_X = 17
 GAME_BOARD_Y = 15
-GAME_BOARD_DEPTH = 4
+GAME_BOARD_DEPTH = 8
 
 '''
  ' Huber loss.
@@ -49,8 +49,8 @@ class Agent:
         self.memory = memory
         self.gamma = gamma
         self.epsilon = epsilon
-        self.epsilon_min = 0.01
-        self.epsilon_decay = 0.90 # 0.995
+        self.epsilon_min = 0.1
+        self.epsilon_decay = 0.99 # 0.995
         self.learning_rate = learning_rate
         self.batch_size = batch_size
         self.name = name
@@ -94,7 +94,7 @@ class Agent:
 
     def pretrain(self):
         if self.pretrainer:
-            self.pretrainer.pretrain(self)
+            self.pretrainer.pretrain(agent=self)
 
     def load_model(self, path):
         print('Loading model', path)
@@ -193,17 +193,15 @@ class Agent:
         model = tf.keras.models.Sequential()
 
         input_layer = tf.keras.layers.Input(shape=(GAME_BOARD_Y, GAME_BOARD_X, GAME_BOARD_DEPTH))
-        conv1 = tf.keras.layers.Conv2D(32, (5, 5), strides=(2, 2), activation='relu', kernel_initializer=tf.keras.initializers.VarianceScaling(scale=2))(input_layer)
-        conv2 = tf.keras.layers.Conv2D(64, (3, 3), strides=(2, 2), activation='relu', kernel_initializer=tf.keras.initializers.VarianceScaling(scale=2))(conv1)
-        conv3 = tf.keras.layers.Conv2D(64, (2, 2), activation='relu', kernel_initializer=tf.keras.initializers.VarianceScaling(scale=2))(conv2)
+        conv1 = tf.keras.layers.Conv2D(32, (4, 4), activation='relu')(input_layer)
+        conv2 = tf.keras.layers.Conv2D(64, (2, 2), activation='relu')(conv1)
+        conv3 = tf.keras.layers.Conv2D(64, (1, 1), activation='relu')(conv2)
         flatten = tf.keras.layers.Flatten()(conv3)
 
-        fc1 = tf.keras.layers.Dense(256, kernel_initializer=tf.keras.initializers.VarianceScaling(scale=2))(flatten)
+        fc1 = tf.keras.layers.Dense(64)(flatten)
 
-        advantage = tf.keras.layers.Dense(self.move_size, kernel_initializer=tf.keras.initializers.VarianceScaling(scale=2))(fc1)
-        fc2 = tf.keras.layers.Dense(256, kernel_initializer=tf.keras.initializers.VarianceScaling(scale=2))(flatten)
-
-        value = tf.keras.layers.Dense(1, kernel_initializer=tf.keras.initializers.VarianceScaling(scale=2))(fc2)
+        advantage = tf.keras.layers.Dense(self.move_size)(fc1)
+        value = tf.keras.layers.Dense(1)(fc1)
 
         advantage = tf.keras.layers.Lambda(lambda advantage: advantage - tf.reduce_mean(advantage, axis=-1, keep_dims=True))(advantage)
         value = tf.keras.layers.Lambda(lambda value: tf.tile(value, [1, self.move_size]))(value)
@@ -218,12 +216,69 @@ class Agent:
 
         return model
 
+    def _build_dueling_model_ala_inception(self):
+        model = tf.keras.models.Sequential()
+
+        input_layer = tf.keras.layers.Input(shape=(GAME_BOARD_Y, GAME_BOARD_X, GAME_BOARD_DEPTH))
+        #first_layer = tf.keras.layers.Conv2D(32, (2, 2), activation='relu')(input_layer)
+        first_layer = input_layer
+
+        first_branch = tf.keras.layers.Conv2D(16, (1, 1), activation='relu', padding='same')(first_layer)
+        second_branch = tf.keras.layers.Conv2D(16, (1, 1), activation='relu', padding='same')(first_layer)
+        second_branch = tf.keras.layers.Conv2D(64, (3, 3), activation='relu', padding='same')(second_branch)
+        third_branch = tf.keras.layers.Conv2D(16, (1, 1), activation='relu', padding='same')(first_layer)
+        third_branch = tf.keras.layers.Conv2D(64, (5, 5), activation='relu', padding='same')(third_branch)
+        fourth_branch = tf.keras.layers.MaxPooling2D((3, 3), strides=(1, 1), padding='same')(first_layer)
+        fourth_branch = tf.keras.layers.Conv2D(64, (1, 1), activation='relu', padding='same')(fourth_branch)
+
+        #third_branch = tf.keras.layers.MaxPooling2D((3, 3), padding='same')(input_layer)
+        #third_branch = tf.keras.layers.Conv2D(32, (1, 1), activation='relu', padding='same')(third_branch)
+
+        concat = tf.keras.layers.concatenate([first_branch, second_branch, third_branch, fourth_branch])
+        #pooled = tf.keras.layers.MaxPooling2D((3, 3), padding='same')(concat)
+
+        first_branch = tf.keras.layers.Conv2D(64, (1, 1), activation='relu', padding='same')(concat)
+        second_branch = tf.keras.layers.Conv2D(16, (1, 1), activation='relu', padding='same')(concat)
+        second_branch = tf.keras.layers.Conv2D(64, (3, 3), activation='relu', padding='same')(second_branch)
+        third_branch = tf.keras.layers.Conv2D(16, (1, 1), activation='relu', padding='same')(concat)
+        third_branch = tf.keras.layers.Conv2D(64, (5, 5), activation='relu', padding='same')(third_branch)
+        fourth_branch = tf.keras.layers.MaxPooling2D((3, 3), strides=(1, 1), padding='same')(concat)
+        fourth_branch = tf.keras.layers.Conv2D(64, (1, 1), activation='relu', padding='same')(fourth_branch)
+
+        concat = tf.keras.layers.concatenate([first_branch, second_branch, third_branch, fourth_branch])
+
+        #pooled = tf.keras.layers.MaxPooling2D((3, 3))(concat)
+        conv = tf.keras.layers.Conv2D(64, (1, 1), activation='relu')(concat)
+        flatten = tf.keras.layers.Flatten()(conv)
+
+        fc1 = tf.keras.layers.Dense(64, activation='relu')(flatten)
+        dropout = tf.keras.layers.Dropout(0.7)(fc1)
+
+        advantage = tf.keras.layers.Dense(self.move_size)(fc1)
+        value = tf.keras.layers.Dense(1)(fc1)
+        # ----
+
+        advantage = tf.keras.layers.Lambda(lambda advantage: advantage - tf.reduce_mean(advantage, axis=-1, keep_dims=True))(advantage)
+        value = tf.keras.layers.Lambda(lambda value: tf.tile(value, [1, self.move_size]))(value)
+        policy = tf.keras.layers.Add()([value, advantage])
+
+        model = tf.keras.models.Model(inputs=[input_layer], outputs=[policy], name='agent_model')
+
+        model.compile(
+            loss='mse',
+            optimizer=tf.keras.optimizers.RMSprop(self.learning_rate),
+            metrics=['accuracy'])
+
+        return model
+
+
     def _build_model(self):
         # model = self._build_simple_dense_model()
         # model = self._build_convolutional_model()
         # model = self._build_pooled_convolutional_model()
         # model = self._build_convolutional_model2()
-        model = self._build_dueling_model()
+        #model = self._build_dueling_model()
+        model = self._build_dueling_model_ala_inception()
         return model
 
     def refresh_target_model(self):
@@ -355,7 +410,7 @@ class Agent:
     def get_callbacks(self):
         return [
             tf.keras.callbacks.ModelCheckpoint(f'./checkpoints/{self.name}-{int(time.time())}/', save_weights_only=True),
-            ModifiedTensorBoard(log_dir='logs/{}-{}'.format(self.name, int(time.time())))
+            ModifiedTensorBoard(log_dir='logs_inception/{}-{}'.format(self.name, int(time.time())))
         ]
 
     def remember_episode_rewards(self, total_reward, min_reward, avg_reward, max_reward, episode_action_variance, steps_played):

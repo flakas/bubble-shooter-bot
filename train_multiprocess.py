@@ -11,11 +11,10 @@ from pretrainer import Pretrainer
 
 #logging.basicConfig(level=logging.DEBUG)
 
-GAME_BOARD_DIMENSION = 64
 COLOR_SPACE = 3
-GAME_BOARD_X = 35
+GAME_BOARD_X = 17
 GAME_BOARD_Y = 15
-GAME_BOARD_DEPTH = 4
+GAME_BOARD_DEPTH = 8
 
 class AgentProcess:
     def __init__(self, config, my_queue, worker_queues):
@@ -26,7 +25,7 @@ class AgentProcess:
         self.worker_queues = worker_queues
         self.memory = Memory(config['memory_size'], epsilon=config['memory_epsilon'], alpha=config['memory_alpha'])
         self.memory.load_from_file()
-        self.pretrainer = None # Pretrainer('observed_episodes.pickle')
+        self.pretrainer = None #Pretrainer('observed_episodes.pickle')
         self.agent = Agent(
                 state_size=GAME_BOARD_X*GAME_BOARD_Y*GAME_BOARD_DEPTH,
                 action_size=560,
@@ -38,7 +37,7 @@ class AgentProcess:
                 batch_size=config['batch_size'],
                 update_target_frequency=config['target_update_frequency'],
                 replay_frequency=config['replay_frequency'],
-                name=f"dueling1_mse_vsinit_{config['epsilon']}eps_{config['gamma']}gamma_{config['learning_rate']}lr_{config['replay_frequency']}refr_{config['target_update_frequency']}upfr_{config['memory_alpha']}memal_{config['batch_size']}bs_normbinaryrewards_parsedstate_onlycurnext",
+                name=f"dueling_inception16_mse_vsinit_{config['epsilon']}eps_{config['gamma']}gamma_{config['learning_rate']}lr_{config['replay_frequency']}refr_{config['target_update_frequency']}upfr_{config['memory_alpha']}memal_{config['batch_size']}bs_normbinaryrewards_parsedsmallstate_allcolors",
                 pretrainer=self.pretrainer)
         self.agent.pretrain()
         self.episodes_seen = 0
@@ -192,7 +191,7 @@ class TrainingSupervisorActor:
 
 TOTAL_TRAINERS = 24
 configurations = [
-        { 'epsilon': 0.99, 'gamma': 0.9, 'learning_rate': 0.00025, 'replay_frequency': 4, 'target_update_frequency': 1000, 'memory_epsilon': 0.01, 'memory_alpha': 0.6, 'memory_size': 20000, 'batch_size': 32, 'episodes': 500, 'steps': 500, },
+        { 'epsilon': 0.99, 'gamma': 0.9, 'learning_rate': 0.00025, 'replay_frequency': 4, 'target_update_frequency': 1000, 'memory_epsilon': 0.01, 'memory_alpha': 0.6, 'memory_size': 10000, 'batch_size': 32, 'episodes': 500, 'steps': 500, },
 ]
 
 if __name__ == '__main__':

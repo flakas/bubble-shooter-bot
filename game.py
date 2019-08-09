@@ -4,9 +4,9 @@ import numpy as np
 
 GAME_BOARD_DIMENSION = 64
 COLOR_SPACE = 3
-GAME_BOARD_X = 35
+GAME_BOARD_X = 17
 GAME_BOARD_Y = 15
-GAME_BOARD_DEPTH = 4
+GAME_BOARD_DEPTH = 8
 
 class Game:
     def __init__(self, vision, controller):
@@ -40,19 +40,25 @@ class Game:
 
     def preprocess_state(self, board):
         # one hot
-        max_state_number = 7
+        total_number_of_colors = 7
+        #number_of_relevant_colors = 6
         #pieces = board.board.reshape(GAME_BOARD_Y, GAME_BOARD_X, 1)
         #print(board.board.shape, board.board.dtype)
-        state = np.eye(max_state_number)[board.board]
+        state = np.eye(total_number_of_colors)[board.board]
+        reduced_state = state[:, 1:-1:2, :] # eliminate edge blank spaces, turn 2-cells-per-ball into one
+        state = reduced_state
+
         #print(state.shape)
         known_balls = state[:, :, 1:]
-
+        #other_color_indexes = list(set(range(total_number_of_colors)) - set([0, board.current_ball, board.next_ball]))
 
         current_matching_balls = state[:, :, board.current_ball]
-        current_non_matching_balls = np.sum(known_balls, axis=2) - current_matching_balls
+        #current_non_matching_balls = np.sum(known_balls, axis=2) - current_matching_balls
 
         next_matching_balls = state[:, :, board.next_ball]
-        next_non_matching_balls = np.sum(known_balls, axis=2) - next_matching_balls
+        #next_non_matching_balls = np.sum(known_balls, axis=2) - next_matching_balls
+
+        #other_color_balls = state[:, :, other_color_indexes]
         #extra_info = np.zeros((GAME_BOARD_Y, GAME_BOARD_X, 1))
         #extra_info[0, :max_state_number, 0] = np.eye(max_state_number)[board.current_ball].T
         #extra_info[1, :max_state_number, 0] = np.eye(max_state_number)[board.next_ball].T
@@ -63,13 +69,15 @@ class Game:
         #print(non_matching_balls.shape)
 
         #state = np.dstack((matching_balls, non_matching_balls, state))
-        state = np.dstack((current_matching_balls, current_non_matching_balls, next_matching_balls, next_non_matching_balls))
-        #state = np.dstack((current_matching_balls, next_matching_balls, known_balls))
+        #state = np.dstack((current_matching_balls, current_non_matching_balls, next_matching_balls, next_non_matching_balls))
+        state = np.dstack((current_matching_balls, next_matching_balls, known_balls))
+        #state = np.dstack((current_matching_balls, next_matching_balls, other_color_balls))
         #print(state.shape)
         # print(state)
         #print(state[:, :, 0])
 
         #normalized_state = state / max_state_number
+        #print(state.shape, board.current_ball, board.next_ball)
 
         return state
 
