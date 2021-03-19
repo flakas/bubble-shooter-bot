@@ -2,7 +2,7 @@ Keras==2.2.4
 mss==4.0.3
 numpy==1.16.4
 opencv-python==3.4.5.20
-Pillow==5.1.0
+Pillow==8.1.1
 pydot==1.4.1
 scipy==1.3.0
 selenium==3.141.0
