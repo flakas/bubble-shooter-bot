@@ -1,6 +1,6 @@
 Keras==2.2.4
 mss==4.0.3
-numpy==1.16.4
+numpy==1.22.0
 opencv-python==3.4.5.20
 Pillow==5.1.0
 pydot==1.4.1
